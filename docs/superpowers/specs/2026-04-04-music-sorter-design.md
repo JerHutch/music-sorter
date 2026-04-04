@@ -4,7 +4,7 @@
 
 Music Sorter is a desktop GUI application for organizing, tagging, deduplicating, and restructuring MP3 music collections. It is not a music player. The target user has ~14,000 MP3 files spread across multiple directories, partially tagged, with duplicates and an iTunes library XML as an additional metadata source.
 
-**Tech stack:** Python 3.12+ / PySide6 (Qt6) / mutagen / librosa / pyacoustid
+**Tech stack:** Python 3.12+ / PySide6 (Qt6) / SQLite / mutagen / librosa / pyacoustid
 
 **Architecture:** Core library (pure Python, zero Qt dependency) + PySide6 GUI frontend. All business logic lives in the core. The GUI is a thin rendering and dispatch layer. This separation enables TDD on the core without GUI mocking.
 
@@ -30,7 +30,8 @@ music-sorter/
 │   │   ├── normalizer.py      # Tag normalization rules engine
 │   │   ├── playlist.py        # Smart playlist generation (M3U/PLS)
 │   │   ├── artwork.py         # Album art fetch & embed
-│   │   └── history.py         # Operation log & undo support
+│   │   ├── history.py         # Operation log & undo support
+│   │   └── database.py        # SQLite cache layer
 │   ├── gui/                   # PySide6 frontend
 │   │   ├── __init__.py
 │   │   ├── app.py             # Application entry point
@@ -61,7 +62,8 @@ music-sorter/
 │   │   ├── test_playlist.py
 │   │   ├── test_artwork.py
 │   │   ├── test_history.py
-│   │   └── test_config.py
+│   │   ├── test_config.py
+│   │   └── test_database.py
 │   └── gui/                   # GUI integration tests
 ├── config/                    # Default configuration files
 │   └── default_config.yaml
@@ -422,6 +424,86 @@ Append-only operation log enabling undo.
 - **Trash:** Deleted files are moved to a trash/staging directory, not permanently removed, until user explicitly empties trash
 - **Grouping:** Operations from a single user action (e.g., "deduplicate all") are grouped by a session ID so they can be undone as a unit
 
+### 4.13 Database Cache (`database.py`)
+
+SQLite-based local cache for fast GUI performance. The MP3 file tags remain the **source of truth**; SQLite is a performance cache and query engine.
+
+**Why SQLite:**
+- Built into Python (`sqlite3` standard library) — zero deployment overhead
+- Single `.db` file, no server process
+- 14K rows is trivial; complex queries for playlist filtering and stats aggregation are instant
+- FTS5 extension enables fast full-text search across artist/title/album fields
+
+**Schema (core tables):**
+
+```sql
+CREATE TABLE tracks (
+    id INTEGER PRIMARY KEY,
+    file_path TEXT UNIQUE NOT NULL,
+    file_size INTEGER,
+    file_mtime REAL,            -- modification time for change detection
+    bitrate INTEGER,
+    duration REAL,
+    title TEXT,
+    artist TEXT,
+    album_artist TEXT,
+    album TEXT,
+    track_number INTEGER,
+    disc_number INTEGER,
+    year INTEGER,
+    genre TEXT,
+    bpm REAL,
+    key TEXT,
+    bucket TEXT,
+    fingerprint TEXT,
+    tag_completeness REAL,
+    tag_source TEXT,
+    has_artwork INTEGER         -- boolean as 0/1
+);
+
+CREATE VIRTUAL TABLE tracks_fts USING fts5(
+    title, artist, album_artist, album, genre,
+    content='tracks', content_rowid='id'
+);
+
+CREATE TABLE history (
+    id INTEGER PRIMARY KEY,
+    session_id TEXT,             -- groups related operations
+    timestamp TEXT,
+    action TEXT,
+    file_path TEXT,
+    field TEXT,
+    old_value TEXT,
+    new_value TEXT,
+    metadata TEXT                -- JSON for extra data (snapshots, trash paths)
+);
+
+CREATE TABLE playlists (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    folder TEXT,                 -- folder path in tree, e.g. "DJ/Sets"
+    format TEXT DEFAULT 'm3u',
+    filters TEXT,                -- JSON filter definition
+    sort_by TEXT
+);
+```
+
+**Sync strategy:**
+
+- **First run:** Full scan of all source directories, parse all MP3 tags, populate DB
+- **Subsequent launches:** Compare `file_mtime` in DB against actual file mtime. Only re-read files where mtime has changed or file is new. Remove entries for files that no longer exist on disk. This makes startup fast (~1-2 seconds for 14K files)
+- **Write-through:** Any tag write operation updates both the MP3 file and the DB row in the same logical operation. The DB update happens after the file write succeeds.
+- **Force rescan:** Manual option in Settings to drop and rebuild the entire cache from disk
+
+**Query interface:**
+
+The database module exposes query methods used by the GUI for:
+- Filtered/sorted track listing (library browser)
+- Full-text search across text fields
+- Aggregate stats (tag completeness breakdown, genre distribution, bitrate histogram, storage per bucket)
+- Playlist filter evaluation
+- Duplicate group retrieval
+
 ---
 
 ## 5. GUI Design
@@ -506,6 +588,7 @@ Append-only operation log enabling undo.
 | Package | Purpose |
 |---|---|
 | PySide6 | Qt6 GUI framework |
+| sqlite3 (stdlib) | Local cache database — no install needed |
 | mutagen | MP3 tag reading/writing (ID3v1, ID3v2.3, ID3v2.4) |
 | pyacoustid | AcoustID fingerprint lookup |
 | chromaprint (system) | Audio fingerprint generation (native dependency) |
