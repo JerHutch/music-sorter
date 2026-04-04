@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Tracks</key>
+	<dict>
+		<key>1001</key>
+		<dict>
+			<key>Track ID</key><integer>1001</integer>
+			<key>Name</key><string>Blue Monday</string>
+			<key>Artist</key><string>New Order</string>
+			<key>Album Artist</key><string>New Order</string>
+			<key>Album</key><string>Power, Corruption &amp; Lies</string>
+			<key>Genre</key><string>Synth-Pop</string>
+			<key>Year</key><integer>1983</integer>
+			<key>Track Number</key><integer>5</integer>
+			<key>BPM</key><integer>130</integer>
+			<key>Location</key><string>file:///music/Electronic/New%20Order/blue_monday.mp3</string>
+		</dict>
+		<key>1002</key>
+		<dict>
+			<key>Track ID</key><integer>1002</integer>
+			<key>Name</key><string>Strobe</string>
+			<key>Artist</key><string>Deadmau5</string>
+			<key>Album</key><string>For Lack of a Better Name</string>
+			<key>Genre</key><string>Progressive House</string>
+			<key>Year</key><integer>2009</integer>
+			<key>Location</key><string>file:///music/House/Deadmau5/strobe.mp3</string>
+		</dict>
+		<key>1003</key>
+		<dict>
+			<key>Track ID</key><integer>1003</integer>
+			<key>Name</key><string>Nonexistent Track</string>
+			<key>Artist</key><string>Nobody</string>
+			<key>Location</key><string>file:///music/missing/track.mp3</string>
+		</dict>
+	</dict>
+</dict>
+</plist>
