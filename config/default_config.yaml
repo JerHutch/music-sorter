@@ -1,0 +1,74 @@
+source_directories: []
+itunes_xml_path: null
+
+required_tags:
+  global:
+    - title
+    - artist
+    - album
+    - genre
+    - year
+    - bucket
+  per_bucket:
+    DJ Music:
+      - bpm
+      - key
+
+rename_patterns:
+  default: "{bucket}/{genre}/{artist}/{?album:{album}/}{track:02d} - {title}.mp3"
+  DJ Music: "{bucket}/{genre}/{artist} - {title} [{bpm}bpm {key}].mp3"
+  DJ Mixes: "{bucket}/{artist}/{title}.mp3"
+
+analysis:
+  DJ Music:
+    bpm: true
+    key: true
+    artwork: true
+  DJ Mixes:
+    bpm: false
+    key: false
+    artwork: true
+  General:
+    bpm: false
+    key: false
+    artwork: true
+
+normalization:
+  artist_prefix: "the_first"
+  case_mode: "title"
+  genre_map: {}
+  custom_rules: []
+
+deduplication:
+  duration_tolerance: 2.0
+  similarity_threshold: 0.85
+
+library_columns:
+  visible:
+    - title
+    - artist
+    - album
+    - genre
+    - bpm
+    - key
+    - bitrate
+    - tag_completeness
+  available:
+    - title
+    - artist
+    - album_artist
+    - album
+    - track_number
+    - disc_number
+    - year
+    - genre
+    - bpm
+    - key
+    - bitrate
+    - duration
+    - file_path
+    - file_size
+    - bucket
+    - tag_completeness
+    - tag_source
+    - has_artwork
