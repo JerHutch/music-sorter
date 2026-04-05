@@ -7,6 +7,9 @@ from typing import Any
 
 from src.core.models import Track
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 _CREATE_TRACKS = """
 CREATE TABLE IF NOT EXISTS tracks (
@@ -124,6 +127,7 @@ class Database:
     # ------------------------------------------------------------------
 
     def upsert_track(self, track: Track, file_mtime: float) -> None:
+        logger.debug("Upserting track: %s", track.file_path)
         sql = """
         INSERT INTO tracks (
             file_path, file_size, bitrate, duration,
@@ -181,27 +185,31 @@ class Database:
             "has_artwork": int(track.has_artwork),
             "file_mtime": file_mtime,
         }
-        self._conn.execute(sql, params)
-        if self._fts_available:
-            self._conn.execute(
-                "DELETE FROM tracks_fts WHERE file_path = ?",
-                (str(track.file_path),),
-            )
-            self._conn.execute(
-                """INSERT INTO tracks_fts
-                   (file_path, title, artist, album, album_artist, genre, bucket)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    str(track.file_path),
-                    track.title or "",
-                    track.artist or "",
-                    track.album or "",
-                    track.album_artist or "",
-                    track.genre or "",
-                    track.bucket or "",
-                ),
-            )
-        self._conn.commit()
+        try:
+            self._conn.execute(sql, params)
+            if self._fts_available:
+                self._conn.execute(
+                    "DELETE FROM tracks_fts WHERE file_path = ?",
+                    (str(track.file_path),),
+                )
+                self._conn.execute(
+                    """INSERT INTO tracks_fts
+                       (file_path, title, artist, album, album_artist, genre, bucket)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        str(track.file_path),
+                        track.title or "",
+                        track.artist or "",
+                        track.album or "",
+                        track.album_artist or "",
+                        track.genre or "",
+                        track.bucket or "",
+                    ),
+                )
+            self._conn.commit()
+        except Exception:
+            logger.error("Failed to upsert track: %s", track.file_path, exc_info=True)
+            raise
 
     def get_track(self, file_path: Path) -> Track | None:
         row = self._conn.execute(
