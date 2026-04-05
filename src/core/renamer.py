@@ -15,6 +15,9 @@ _TOKEN_ALIASES = {
     "disc": "disc_number",
 }
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def sanitize_filename(name: str) -> str:
     """Replace forbidden characters with '_', strip leading/trailing spaces and trailing dots."""
@@ -152,6 +155,7 @@ def generate_rename_plan(
     Picks the bucket-specific pattern if available, else falls back to 'default'.
     Handles destination collisions by appending (2), (3), etc.
     """
+    logger.debug("Generating rename plan for %d tracks", len(tracks))
     used_destinations: set[Path] = set()
     operations: list[RenameOperation] = []
 
@@ -178,4 +182,5 @@ def generate_rename_plan(
         used_destinations.add(destination)
         operations.append(RenameOperation(source=track.file_path, destination=destination))
 
+    logger.info("Rename plan generated: %d operation%s", len(operations), "" if len(operations) == 1 else "s")
     return operations
