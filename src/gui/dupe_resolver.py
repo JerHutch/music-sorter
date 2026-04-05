@@ -24,6 +24,7 @@ class DupeResolver(QWidget):
     """Review and resolve duplicate track groups."""
 
     delete_requested = Signal(list)  # list[Track] to delete
+    scan_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -66,6 +67,7 @@ class DupeResolver(QWidget):
 
         toolbar = QHBoxLayout()
         self._scan_btn = QPushButton("Find Duplicates")
+        self._scan_btn.clicked.connect(self.scan_requested.emit)
         self._auto_resolve_btn = QPushButton("Auto-Resolve All")
         self._auto_resolve_btn.clicked.connect(self._auto_resolve_all)
         self._apply_btn = QPushButton("Apply Deletions…")

@@ -109,6 +109,11 @@ class Config:
                     tags.append(tag)
         return tags
 
+    def set_visible_columns(self, columns: list[str]) -> None:
+        if "library_columns" not in self._data:
+            self._data["library_columns"] = {}
+        self._data["library_columns"]["visible"] = columns
+
     def get_rename_pattern(self, bucket: str) -> str:
         """Return the rename pattern for a bucket, falling back to default."""
         return self.rename_patterns.get(bucket, self.rename_patterns.get("default", ""))

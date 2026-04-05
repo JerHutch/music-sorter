@@ -14,7 +14,7 @@ import logging
 
 from src.core.config import Config, USER_CONFIG_PATH
 from src.core.database import Database
-from src.core.models import Track
+from src.core.models import TagConflict, Track
 from src.gui.dashboard import Dashboard
 from src.gui.dupe_resolver import DupeResolver
 from src.gui.itunes_import import ITunesImport
@@ -153,14 +153,7 @@ class MainWindow(QMainWindow):
         # Wire dupe resolver delete
         self._dupe_resolver.delete_requested.connect(self._on_delete_tracks)
         # Wire dupe resolver scan button to use all_tracks
-        import warnings
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            try:
-                self._dupe_resolver._scan_btn.clicked.disconnect()
-            except (RuntimeError, TypeError):
-                pass
-        self._dupe_resolver._scan_btn.clicked.connect(self._start_dedup_scan)
+        self._dupe_resolver.scan_requested.connect(self._start_dedup_scan)
         # Wire iTunes import apply
         self._itunes_import.apply_requested.connect(self._on_itunes_apply)
         # Wire rename complete → refresh
@@ -260,7 +253,7 @@ class MainWindow(QMainWindow):
         self._config.save(self._config_path)
 
     def _on_columns_changed(self, columns: list[str]) -> None:
-        self._config._data["library_columns"]["visible"] = columns
+        self._config.set_visible_columns(columns)
         self._config.save(self._config_path)
 
     # ------------------------------------------------------------------
@@ -341,6 +334,8 @@ class MainWindow(QMainWindow):
             self._tag_editor.load_tracks(tracks)
 
     def _on_tag_save(self, tracks: list[Track], changes: dict[str, str]) -> None:
+        if self._tag_worker and self._tag_worker.isRunning():
+            return
         for track in tracks:
             for field, value in changes.items():
                 if field in ("track_number", "disc_number", "year"):
@@ -351,15 +346,16 @@ class MainWindow(QMainWindow):
                     setattr(track, field, value or None)
         pairs = [(track, list(changes.keys())) for track in tracks]
         self._tag_worker = TagWriteWorker(pairs, self._db)
-        self._tag_worker.finished.connect(lambda updated: (
-            self._status_label.setText(f"Saved tags for {len(updated)} track(s)"),
-            self._refresh_library(),
-        ))
+        self._tag_worker.finished.connect(self._on_tag_write_finished)
         self._tag_worker.error.connect(
             lambda msg: self._status_label.setText(f"Tag write error: {msg}")
         )
         self._tag_worker.start()
         self._status_label.setText(f"Writing tags for {len(tracks)} track(s)…")
+
+    def _on_tag_write_finished(self, updated: list) -> None:
+        self._status_label.setText(f"Saved tags for {len(updated)} track(s)")
+        self._refresh_library()
 
     # ------------------------------------------------------------------
     # Deduplication
@@ -383,7 +379,9 @@ class MainWindow(QMainWindow):
     # iTunes import
     # ------------------------------------------------------------------
 
-    def _on_itunes_apply(self, conflicts) -> None:
+    def _on_itunes_apply(self, conflicts: list[TagConflict]) -> None:
+        if self._tag_worker and self._tag_worker.isRunning():
+            return
         itunes_edits: dict[Path, tuple[Track, list[str]]] = {}
         for conflict in conflicts:
             if conflict.resolution != "itunes":
@@ -398,11 +396,12 @@ class MainWindow(QMainWindow):
         if not itunes_edits:
             return
         self._tag_worker = TagWriteWorker(list(itunes_edits.values()), self._db)
-        self._tag_worker.finished.connect(lambda updated: (
-            self._status_label.setText(f"Applied iTunes tags to {len(updated)} track(s)"),
-            self._refresh_library(),
-        ))
+        self._tag_worker.finished.connect(self._on_itunes_write_finished)
         self._tag_worker.start()
+
+    def _on_itunes_write_finished(self, updated: list) -> None:
+        self._status_label.setText(f"Applied iTunes tags to {len(updated)} track(s)")
+        self._refresh_library()
 
     # ------------------------------------------------------------------
     # Close
