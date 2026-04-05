@@ -85,6 +85,7 @@ class DedupeWorker(QThread):
         except Exception as exc:
             logger.exception("DedupeWorker failed")
             self.error.emit(str(exc))
+            self.finished.emit([])
 
 
 class TagWriteWorker(QThread):
@@ -108,6 +109,7 @@ class TagWriteWorker(QThread):
                 try:
                     mtime = track.file_path.stat().st_mtime
                 except OSError:
+                    logger.warning("TagWriteWorker: could not stat %s, using mtime=0.0", track.file_path)
                     mtime = 0.0
                 upsert_track_in_db(self._db, track, file_mtime=mtime)
                 updated.append(track)
@@ -144,6 +146,7 @@ class ITunesWorker(QThread):
         except Exception as exc:
             logger.exception("ITunesWorker failed")
             self.error.emit(str(exc))
+            self.finished.emit([])
 
 
 class RenameWorker(QThread):
@@ -169,3 +172,4 @@ class RenameWorker(QThread):
         except Exception as exc:
             logger.exception("RenameWorker failed")
             self.error.emit(str(exc))
+            self.finished.emit([])
