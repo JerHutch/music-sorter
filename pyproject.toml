@@ -18,6 +18,9 @@ dev = [
     "pytest-cov>=5.0",
 ]
 
+[project.scripts]
+music-sorter = "src.gui.app:main"
+
 [build-system]
 requires = ["setuptools>=68.0"]
 build-backend = "setuptools.build_meta"
