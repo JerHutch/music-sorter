@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from mutagen.id3 import (
@@ -19,6 +20,8 @@ from mutagen.id3 import (
 from mutagen.mp3 import MP3
 
 from src.core.models import Track
+
+logger = logging.getLogger(__name__)
 
 
 def _get_text(tags, key: str) -> str | None:
@@ -56,6 +59,7 @@ def _get_txxx(tags, desc: str) -> str | None:
 
 
 def read_tags(path: Path) -> Track:
+    logger.debug("Reading tags: %s", path)
     audio = MP3(path)
     tags = audio.tags or {}
 
@@ -85,6 +89,7 @@ def write_tags(
     if dry_run:
         return
 
+    logger.debug("Writing fields %s to: %s", fields, path)
     try:
         id3 = ID3(path)
     except ID3NoHeaderError:
@@ -133,4 +138,8 @@ def write_tags(
             if value is not None:
                 id3.add(TXXX(encoding=3, desc=txxx_fields[field], text=[str(value)]))
 
-    id3.save(path)
+    try:
+        id3.save(path)
+    except Exception:
+        logger.error("Failed to write tags to: %s", path, exc_info=True)
+        raise
