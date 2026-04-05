@@ -222,20 +222,32 @@ class LibraryBrowser(QWidget):
 
     def _on_toggle_column(self, checked: bool) -> None:
         col = self.sender().data()
+        changed = False
         if checked and col not in self._visible_columns:
             self._visible_columns.append(col)
+            changed = True
         elif not checked and col in self._visible_columns and len(self._visible_columns) > 1:
             self._visible_columns.remove(col)
-        self._rebuild_model_columns()
-        self._repopulate()
-        self.columns_changed.emit(list(self._visible_columns))
+            changed = True
+        if changed:
+            self._rebuild_model_columns()
+            self._repopulate()
+            self.columns_changed.emit(list(self._visible_columns))
 
     def _on_section_moved(self, logical: int, old_visual: int, new_visual: int) -> None:
         header = self._table.horizontalHeader()
-        new_order = [self._visible_columns[header.logicalIndex(i)]
-                     for i in range(len(self._visible_columns))]
-        self._visible_columns = new_order
-        self.columns_changed.emit(list(self._visible_columns))
+        # Build a reverse map: display label -> column key
+        label_to_col = {v: k for k, v in _COLUMN_HEADERS.items()}
+        new_order = []
+        for i in range(header.count()):
+            label = self._model.horizontalHeaderItem(header.logicalIndex(i))
+            if label is not None:
+                col_key = label_to_col.get(label.text())
+                if col_key:
+                    new_order.append(col_key)
+        if new_order and len(new_order) == len(self._visible_columns):
+            self._visible_columns = new_order
+            self.columns_changed.emit(list(self._visible_columns))
 
     def _on_selection_changed(self) -> None:
         self.selection_changed.emit(self.selected_tracks())

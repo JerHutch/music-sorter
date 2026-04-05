@@ -7,7 +7,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from src.core.models import Track
+from src.core.models import Track, PlaylistDefinition
 
 import logging
 logger = logging.getLogger(__name__)
@@ -327,7 +327,6 @@ class Database:
     # ------------------------------------------------------------------
 
     def get_all_playlists(self) -> list:
-        from src.core.models import PlaylistDefinition
         rows = self._conn.execute(
             "SELECT name, filters, folder, format, sort_by FROM playlists"
         ).fetchall()
