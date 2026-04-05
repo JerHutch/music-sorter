@@ -55,3 +55,12 @@ def test_get_rename_pattern():
     config = Config.load_defaults()
     assert "{bpm}" in config.get_rename_pattern("DJ Music")
     assert config.get_rename_pattern("Unknown Bucket") == config.rename_patterns["default"]
+
+
+def test_logging_config_defaults():
+    config = Config.load_defaults()
+    log_cfg = config.logging
+    assert log_cfg["level"] == "INFO"
+    assert log_cfg["console_level"] == "WARNING"
+    assert "app.log" in log_cfg["file"]
+    assert log_cfg["max_days"] == 7

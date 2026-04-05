@@ -72,3 +72,9 @@ library_columns:
     - tag_completeness
     - tag_source
     - has_artwork
+
+logging:
+  level: INFO             # root log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  console_level: WARNING  # stderr level — can be quieter than the file
+  file: ~/.music-sorter/logs/app.log
+  max_days: 7

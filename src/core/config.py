@@ -82,6 +82,10 @@ class Config:
     def library_columns(self) -> dict:
         return self._data.get("library_columns", {})
 
+    @property
+    def logging(self) -> dict:
+        return self._data.get("logging", {})
+
     def get_required_tags(self, bucket: str) -> list[str]:
         """Return the full list of required tags for a bucket (global + per-bucket)."""
         tags = list(self.required_tags.get("global", []))
