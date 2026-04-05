@@ -125,3 +125,11 @@ def test_setup_logging_creates_log_directory(tmp_path, clean_root_logger):
     }})
     setup_logging(config)
     assert log_path.parent.exists()
+
+
+def test_setup_logging_is_idempotent(tmp_path, clean_root_logger):
+    config = _make_config(tmp_path)
+    setup_logging(config)
+    first_count = len(clean_root_logger.handlers)
+    setup_logging(config)
+    assert len(clean_root_logger.handlers) == first_count

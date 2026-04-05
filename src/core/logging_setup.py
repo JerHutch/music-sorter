@@ -28,7 +28,7 @@ class JSONFormatter(logging.Formatter):
 def setup_logging(config: Config) -> None:
     """Configure root logger with a rotating JSON file handler and a plain-text stderr handler.
 
-    Call once at application startup before any logging occurs.
+    Safe to call multiple times; removes existing handlers before reconfiguring.
     """
     cfg = config.logging
     level = getattr(logging, str(cfg.get("level", "INFO")).upper(), logging.INFO)
@@ -38,6 +38,11 @@ def setup_logging(config: Config) -> None:
 
     root = logging.getLogger()
     root.setLevel(level)
+
+    # Remove any existing handlers to prevent duplication on repeated calls
+    for h in root.handlers[:]:
+        root.removeHandler(h)
+        h.close()
 
     # Rotating file handler — JSON
     log_file.parent.mkdir(parents=True, exist_ok=True)
