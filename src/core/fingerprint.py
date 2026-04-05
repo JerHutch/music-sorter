@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import logging
 import subprocess
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 try:
     import acoustid
@@ -13,18 +16,24 @@ _API_KEY = "ACOUSTID_API_KEY"
 
 def generate_fingerprint(path: Path) -> str | None:
     """Generate a Chromaprint audio fingerprint. Returns fingerprint string or None."""
+    logger.debug("Generating fingerprint: %s", path)
     try:
         result = subprocess.run(
             ["fpcalc", "-raw", str(path)],
             capture_output=True, text=True, timeout=30,
         )
         if result.returncode != 0:
+            logger.warning("fpcalc returned non-zero exit code for: %s", path)
             return None
         for line in result.stdout.strip().split("\n"):
             if line.startswith("FINGERPRINT="):
                 return line.split("=", 1)[1]
         return None
-    except (subprocess.TimeoutExpired, FileNotFoundError):
+    except subprocess.TimeoutExpired:
+        logger.error("fpcalc timed out for: %s", path)
+        return None
+    except FileNotFoundError:
+        logger.error("fpcalc not found — install Chromaprint to enable fingerprinting")
         return None
 
 

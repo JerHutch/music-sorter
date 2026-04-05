@@ -1,6 +1,9 @@
 from __future__ import annotations
+import logging
 from pathlib import Path
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 try:
     import librosa
@@ -26,6 +29,7 @@ def _pitch_class_to_camelot(pitch_class: int, is_major: bool) -> str:
 def detect_bpm(path: Path, duration_limit: float = 60.0) -> float | None:
     if librosa is None:
         return None
+    logger.debug("Detecting BPM: %s", path)
     try:
         y, sr = librosa.load(str(path), duration=duration_limit, sr=22050, mono=True)
         tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
@@ -33,12 +37,14 @@ def detect_bpm(path: Path, duration_limit: float = 60.0) -> float | None:
             tempo = float(tempo[0])
         return round(float(tempo), 1)
     except Exception:
+        logger.error("BPM detection failed: %s", path, exc_info=True)
         return None
 
 
 def detect_key(path: Path, duration_limit: float = 60.0) -> str | None:
     if librosa is None:
         return None
+    logger.debug("Detecting key: %s", path)
     try:
         y, sr = librosa.load(str(path), duration=duration_limit, sr=22050, mono=True)
         chroma = librosa.feature.chroma_cqt(y=y, sr=sr)
@@ -69,4 +75,5 @@ def detect_key(path: Path, duration_limit: float = 60.0) -> str | None:
 
         return _pitch_class_to_camelot(best_pitch, best_is_major)
     except Exception:
+        logger.error("Key detection failed: %s", path, exc_info=True)
         return None

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import logging
 from src.core.fingerprint import compute_similarity
 from src.core.models import DupeGroup, TagConflict, Track
+
+logger = logging.getLogger(__name__)
 
 _MERGEABLE_FIELDS = [
     "title", "artist", "album_artist", "album", "track_number",
@@ -31,6 +34,7 @@ def find_duplicates(
     similarity_threshold: float = 0.85,
     on_progress: callable = None,
 ) -> list[DupeGroup]:
+    logger.debug("Starting duplicate detection for %d tracks", len(tracks))
     duration_groups = find_duration_groups(tracks, duration_tolerance)
     dupe_groups: list[DupeGroup] = []
     processed = 0
@@ -56,6 +60,7 @@ def find_duplicates(
         processed += len(group)
         if on_progress:
             on_progress(processed, len(tracks))
+    logger.info("Duplicate detection complete: %d duplicate group%s found", len(dupe_groups), "" if len(dupe_groups) == 1 else "s")
     return dupe_groups
 
 
