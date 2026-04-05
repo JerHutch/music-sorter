@@ -76,7 +76,7 @@ class StatsView(QWidget):
 
     def _update_genre(self, genre_counts: dict) -> None:
         self._genre_chart.removeAllSeries()
-        for ax in self._genre_chart.axes():
+        for ax in list(self._genre_chart.axes()):
             self._genre_chart.removeAxis(ax)
         if not genre_counts:
             return
@@ -100,7 +100,7 @@ class StatsView(QWidget):
 
     def _update_bitrate(self, bitrate_counts: dict) -> None:
         self._bitrate_chart.removeAllSeries()
-        for ax in self._bitrate_chart.axes():
+        for ax in list(self._bitrate_chart.axes()):
             self._bitrate_chart.removeAxis(ax)
         if not bitrate_counts:
             return
@@ -123,7 +123,7 @@ class StatsView(QWidget):
 
     def _update_bucket(self, bucket_counts: dict) -> None:
         self._bucket_chart.removeAllSeries()
-        for ax in self._bucket_chart.axes():
+        for ax in list(self._bucket_chart.axes()):
             self._bucket_chart.removeAxis(ax)
         if not bucket_counts:
             return

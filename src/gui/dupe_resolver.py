@@ -17,6 +17,7 @@ _COL_PATH = 0
 _COL_BITRATE = 1
 _COL_COMPLETENESS = 2
 _COL_ACTION = 3
+_DELETE_LABELS = frozenset({"Delete", "Delete (auto)"})
 
 
 class DupeResolver(QWidget):
@@ -161,7 +162,7 @@ class DupeResolver(QWidget):
             for j in range(group_item.childCount()):
                 child = group_item.child(j)
                 combo: QComboBox = self._tree.itemWidget(child, _COL_ACTION)
-                if combo and "Delete" in combo.currentText():
+                if combo and combo.currentText() in _DELETE_LABELS:
                     track: Track = child.data(0, Qt.ItemDataRole.UserRole)
                     if track is not None:
                         to_delete.append(track)
