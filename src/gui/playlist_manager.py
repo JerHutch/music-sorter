@@ -265,7 +265,11 @@ class PlaylistManager(QWidget):
                 skipped += 1
                 continue
             matching = filter_tracks_for_playlist(self._all_tracks, pld)
-            output = Path(pld.folder) / f"{pld.name}.{pld.format}"
+            # Resolve relative folder paths against home dir for predictable behavior
+            folder_path = Path(pld.folder)
+            if not folder_path.is_absolute():
+                folder_path = Path.home() / folder_path
+            output = folder_path / f"{pld.name}.{pld.format}"
             output.parent.mkdir(parents=True, exist_ok=True)
             generate_m3u(matching, output) if pld.format == "m3u" else generate_pls(matching, output)
             count += 1

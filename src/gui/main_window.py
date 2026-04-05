@@ -411,7 +411,13 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def closeEvent(self, event):
-        for worker in (self._scan_worker, self._tag_worker):
+        for worker in (
+            self._scan_worker,
+            self._tag_worker,
+            getattr(self._dupe_resolver, "_worker", None),
+            getattr(self._rename_preview, "_worker", None),
+            getattr(self._itunes_import, "_worker", None),
+        ):
             if worker and worker.isRunning():
                 if hasattr(worker, "cancel"):
                     worker.cancel()

@@ -43,6 +43,8 @@ class DupeResolver(QWidget):
 
     def start_scan(self, tracks: list[Track], duration_tolerance: float = 2.0,
                    similarity_threshold: float = 0.85) -> None:
+        if self._worker and self._worker.isRunning():
+            return
         self._progress_bar.setVisible(True)
         self._status_label.setText("Scanning for duplicates…")
         self._scan_btn.setEnabled(False)

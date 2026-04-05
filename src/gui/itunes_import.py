@@ -136,6 +136,8 @@ class ITunesImport(QWidget):
             self._import_btn.setEnabled(True)
 
     def _start_import(self) -> None:
+        if self._worker and self._worker.isRunning():
+            return
         if self._xml_path is None:
             return
         self._progress_bar.setVisible(True)

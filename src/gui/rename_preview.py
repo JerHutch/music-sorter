@@ -175,6 +175,8 @@ class RenamePreview(QWidget):
             self._table.setItem(row, 2, status_item)
 
     def _execute(self) -> None:
+        if self._worker and self._worker.isRunning():
+            return
         if not self._plan:
             return
         self._execute_btn.setEnabled(False)
