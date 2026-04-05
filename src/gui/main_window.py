@@ -397,6 +397,9 @@ class MainWindow(QMainWindow):
             return
         self._tag_worker = TagWriteWorker(list(itunes_edits.values()), self._db)
         self._tag_worker.finished.connect(self._on_itunes_write_finished)
+        self._tag_worker.error.connect(
+            lambda msg: self._status_label.setText(f"iTunes tag write error: {msg}")
+        )
         self._tag_worker.start()
 
     def _on_itunes_write_finished(self, updated: list) -> None:
