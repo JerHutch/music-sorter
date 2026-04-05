@@ -40,16 +40,12 @@ class PlaylistManager(QWidget):
 
     def playlist_count(self) -> int:
         """Count leaf (playlist) items, not folder items."""
-        count = 0
+        def _count(item: QTreeWidgetItem) -> int:
+            if item.data(0, Qt.ItemDataRole.UserRole) is not None:
+                return 1
+            return sum(_count(item.child(i)) for i in range(item.childCount()))
         root = self._tree.invisibleRootItem()
-        for i in range(root.childCount()):
-            item = root.child(i)
-            pld = item.data(0, Qt.ItemDataRole.UserRole)
-            if pld is not None:
-                count += 1
-            else:
-                count += item.childCount()
-        return count
+        return sum(_count(root.child(i)) for i in range(root.childCount()))
 
     # ------------------------------------------------------------------
     # UI construction
@@ -205,6 +201,7 @@ class PlaylistManager(QWidget):
     def _new_folder(self) -> None:
         name, ok = QInputDialog.getText(self, "New Folder", "Folder name:")
         if ok and name.strip():
+            # Folder is a UI grouping only; it persists when a playlist is saved into it.
             folder_item = QTreeWidgetItem(self._tree)
             folder_item.setText(0, name.strip())
             folder_item.setData(0, Qt.ItemDataRole.UserRole, None)
@@ -262,12 +259,17 @@ class PlaylistManager(QWidget):
 
     def _regenerate_all(self) -> None:
         count = 0
+        skipped = 0
         for pld in self._playlists:
             if not pld.folder:
+                skipped += 1
                 continue
             matching = filter_tracks_for_playlist(self._all_tracks, pld)
             output = Path(pld.folder) / f"{pld.name}.{pld.format}"
             output.parent.mkdir(parents=True, exist_ok=True)
             generate_m3u(matching, output) if pld.format == "m3u" else generate_pls(matching, output)
             count += 1
-        QMessageBox.information(self, "Re-generate All", f"Updated {count} playlist(s).")
+        msg = f"Updated {count} playlist(s)."
+        if skipped:
+            msg += f" {skipped} skipped (no folder set)."
+        QMessageBox.information(self, "Re-generate All", msg)

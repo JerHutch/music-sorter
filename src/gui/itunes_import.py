@@ -192,5 +192,5 @@ class ITunesImport(QWidget):
             combo: QComboBox = self._table.cellWidget(row, _COL_ACTION)
             if combo:
                 conflict.resolution = "itunes" if combo.currentText() == "Use iTunes" else "file"
-            resolved.append(conflict)
+                resolved.append(conflict)
         self.apply_requested.emit(resolved)

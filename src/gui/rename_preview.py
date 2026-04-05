@@ -183,13 +183,19 @@ class RenamePreview(QWidget):
         self._worker.progress.connect(lambda cur, tot: self._progress_bar.setValue(
             int(cur / tot * 100) if tot else 0))
         self._worker.finished.connect(self._on_execute_finished)
-        self._worker.error.connect(lambda msg: self._status_label.setText(f"Error: {msg}"))
+        self._worker.error.connect(self._on_execute_error)
         self._worker.start()
 
     def _on_execute_finished(self, result: list[RenameOperation]) -> None:
         self._progress_bar.setVisible(False)
-        self.load_plan(result)
+        self._plan = result
+        self._populate_table(result)
         done = sum(1 for op in result if op.status == "complete")
         self._status_label.setText(f"Done: {done}/{len(result)} files renamed.")
         self._execute_btn.setEnabled(False)
         self.rename_complete.emit(result)
+
+    def _on_execute_error(self, msg: str) -> None:
+        self._progress_bar.setVisible(False)
+        self._execute_btn.setEnabled(True)
+        self._status_label.setText(f"Error: {msg}")
