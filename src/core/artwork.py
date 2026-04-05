@@ -1,7 +1,10 @@
 from __future__ import annotations
+import logging
 from pathlib import Path
 from mutagen.id3 import ID3, ID3NoHeaderError, APIC
 from mutagen.mp3 import MP3
+
+logger = logging.getLogger(__name__)
 
 try:
     import musicbrainzngs
@@ -20,6 +23,7 @@ def has_artwork(path: Path) -> bool:
 def embed_artwork(path: Path, image_data: bytes, dry_run: bool = False) -> None:
     if dry_run:
         return
+    logger.debug("Embedding artwork in: %s", path)
     try:
         id3 = ID3(path)
     except ID3NoHeaderError:
@@ -31,11 +35,16 @@ def embed_artwork(path: Path, image_data: bytes, dry_run: bool = False) -> None:
 def search_cover_art(artist: str, album: str) -> bytes | None:
     if musicbrainzngs is None:
         return None
+    logger.info("Searching MusicBrainz for artwork: %s — %s", artist, album)
     try:
         results = musicbrainzngs.search_releases(artist=artist, release=album, limit=5)
         releases = results.get("release-list", [])
         if not releases:
+            logger.warning("No MusicBrainz releases found for: %s — %s", artist, album)
             return None
-        return musicbrainzngs.get_image_front(releases[0]["id"])
+        image = musicbrainzngs.get_image_front(releases[0]["id"])
+        logger.info("Artwork found for: %s — %s", artist, album)
+        return image
     except Exception:
+        logger.error("MusicBrainz lookup failed for: %s — %s", artist, album, exc_info=True)
         return None
