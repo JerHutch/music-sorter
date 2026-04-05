@@ -48,10 +48,10 @@ logging:
 **File (JSON):**
 
 ```json
-{"ts": "2026-04-05T14:32:01", "level": "WARNING", "logger": "src.core.scanner", "thread": "ScanWorker", "msg": "Could not read tags: bad_file.mp3"}
+{"ts": "2026-04-05T14:32:01-05:00", "level": "WARNING", "logger": "src.core.scanner", "thread": "ScanWorker", "msg": "Could not read tags: bad_file.mp3"}
 ```
 
-`exc` is omitted (not `null`) when there is no exception.
+Timestamps are **local time** (stdlib `logging` default). The `%z` offset is included so the timezone is unambiguous in the file. `exc` is omitted when there is no exception.
 
 Implementation — `JSONFormatter` in `logging_setup.py`:
 
@@ -59,7 +59,7 @@ Implementation — `JSONFormatter` in `logging_setup.py`:
 class JSONFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         entry = {
-            "ts": self.formatTime(record, "%Y-%m-%dT%H:%M:%S"),
+            "ts": self.formatTime(record, "%Y-%m-%dT%H:%M:%S%z"),
             "level": record.levelname,
             "logger": record.name,
             "thread": record.threadName,
@@ -76,7 +76,7 @@ class JSONFormatter(logging.Formatter):
 2026-04-05 14:32:01 WARNING  [ScanWorker] src.core.scanner — Could not read tags: bad_file.mp3
 ```
 
-Format string: `%(asctime)s %(levelname)-8s [%(threadName)s] %(name)s — %(message)s`
+Timestamps are local time. Format string: `%(asctime)s %(levelname)-8s [%(threadName)s] %(name)s — %(message)s`
 
 ## Log Level Conventions
 
