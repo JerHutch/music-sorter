@@ -1,3 +1,4 @@
+import pytest
 from pathlib import Path
 
 from src.core.tagger import COMPLETENESS_FIELDS, read_tags, write_tags
@@ -100,6 +101,14 @@ def test_read_tags_completeness_untagged(untagged_mp3):
 def test_completeness_fields_is_public():
     """COMPLETENESS_FIELDS should be importable and non-empty."""
     assert len(COMPLETENESS_FIELDS) > 0
+
+
+def test_read_tags_corrupt_file_raises_value_error(tmp_path):
+    """read_tags should raise ValueError (not HeaderNotFoundError) for corrupt/non-MPEG files."""
+    corrupt = tmp_path / "corrupt.mp3"
+    corrupt.write_bytes(b"this is not an MPEG file at all")
+    with pytest.raises(ValueError, match="corrupt or unreadable"):
+        read_tags(corrupt)
 
 
 def test_compute_completeness_with_config():

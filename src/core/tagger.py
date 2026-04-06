@@ -17,7 +17,8 @@ from mutagen.id3 import (
     TXXX,
     ID3NoHeaderError,
 )
-from mutagen.mp3 import MP3
+from mutagen import MutagenError
+from mutagen.mp3 import MP3, HeaderNotFoundError
 
 from src.core.models import Track
 
@@ -63,7 +64,10 @@ def _get_txxx(tags, desc: str) -> str | None:
 
 def read_tags(path: Path) -> Track:
     logger.debug("Reading tags: %s", path)
-    audio = MP3(path)
+    try:
+        audio = MP3(path)
+    except (HeaderNotFoundError, MutagenError) as exc:
+        raise ValueError(f"File is corrupt or unreadable: {path}") from exc
     tags = audio.tags or {}
 
     track = Track(
