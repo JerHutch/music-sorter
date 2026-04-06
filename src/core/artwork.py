@@ -12,6 +12,41 @@ try:
 except ImportError:
     musicbrainzngs = None
 
+_COVER_CANDIDATES = [
+    "cover.jpg", "cover.png",
+    "folder.jpg", "folder.png",
+    "artwork.jpg", "artwork.png",
+    "front.jpg", "front.png",
+]
+
+
+def find_local_artwork(path: Path) -> bytes | None:
+    """Search the MP3's directory for common cover art filenames (case-insensitive)."""
+    directory = path.parent
+    try:
+        files = {f.name.lower(): f for f in directory.iterdir() if f.is_file()}
+    except OSError:
+        return None
+    for name in _COVER_CANDIDATES:
+        if name in files:
+            return files[name].read_bytes()
+    return None
+
+
+def read_artwork(path: Path) -> bytes | None:
+    """Return raw bytes of the first embedded APIC frame, or None if absent."""
+    try:
+        audio = MP3(path)
+        tags = audio.tags or {}
+        for key in tags:
+            if key.startswith("APIC"):
+                return tags[key].data
+        return None
+    except Exception:
+        logger.warning("read_artwork: could not read %s", path)
+        return None
+
+
 def has_artwork(path: Path) -> bool:
     try:
         audio = MP3(path)
