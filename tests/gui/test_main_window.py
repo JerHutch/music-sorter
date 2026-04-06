@@ -79,3 +79,26 @@ def test_sidebar_buckets_update_on_refresh(qtbot):
 
     assert "New Bucket" in win._bucket_items
     assert "DJ Music" in win._bucket_items
+
+
+def test_sidebar_shows_uncategorized_for_untagged_tracks(qtbot):
+    """Tracks with no bucket should appear under Uncategorized in the sidebar."""
+    from pathlib import Path
+    from src.core.models import Track
+
+    mock_config, mock_db = _make_mock_env(bucket_counts={"DJ Music": 1})
+    untagged = Track(
+        file_path=Path("/tmp/a.mp3"), file_size=1000, bitrate=320, duration=200.0,
+        bucket=None,
+    )
+    mock_db.get_all_tracks.return_value = [untagged]
+
+    with patch("src.gui.main_window.Database") as MockDB, \
+         patch("src.gui.main_window.Config.load_user_config") as mock_cfg:
+        mock_cfg.return_value = mock_config
+        MockDB.return_value = mock_db
+        from src.gui.main_window import MainWindow
+        win = MainWindow()
+        qtbot.addWidget(win)
+
+    assert "Uncategorized" in win._bucket_items

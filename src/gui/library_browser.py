@@ -196,6 +196,8 @@ class LibraryBrowser(QWidget):
         if self._bucket_filter is not None:
             if self._bucket_filter == "All Music":
                 return list(self._all_tracks)
+            if self._bucket_filter == "Uncategorized":
+                return [t for t in self._all_tracks if not t.bucket]
             return [t for t in self._all_tracks if t.bucket == self._bucket_filter]
         if self._extra_filter_fn is not None:
             return [t for t in self._all_tracks if self._extra_filter_fn(t)]

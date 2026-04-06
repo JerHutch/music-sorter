@@ -348,6 +348,12 @@ class MainWindow(QMainWindow):
             self._buckets_tree.addTopLevelItem(item)
             self._bucket_items[bucket] = item
 
+        uncategorized = sum(1 for t in self._all_tracks if not t.bucket)
+        if uncategorized:
+            item = QTreeWidgetItem([f"Uncategorized ({uncategorized})"])
+            self._buckets_tree.addTopLevelItem(item)
+            self._bucket_items["Uncategorized"] = item
+
         self._task_items["Missing Tags"].setText(0, f"Missing Tags ({missing_tags})")
         self._task_items["No Artwork"].setText(0, f"No Artwork ({no_artwork})")
 

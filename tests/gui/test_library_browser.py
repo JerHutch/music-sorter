@@ -48,6 +48,17 @@ def test_library_browser_filter_by_fn(qtbot):
     assert browser.visible_row_count() == 1
 
 
+def test_library_browser_filter_uncategorized(qtbot):
+    t1 = _make_track("A", bucket="DJ Music")
+    t2 = _make_track("B", bucket=None)
+    t3 = _make_track("C", bucket=None)
+    browser = LibraryBrowser(visible_columns=["title"])
+    qtbot.addWidget(browser)
+    browser.load_tracks([t1, t2, t3])
+    browser.filter_by_bucket("Uncategorized")
+    assert browser.visible_row_count() == 2
+
+
 def test_library_browser_clear_filter(qtbot):
     t1 = _make_track("A", bucket="DJ Music")
     t2 = _make_track("B", bucket="General")
