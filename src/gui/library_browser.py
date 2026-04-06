@@ -132,6 +132,9 @@ class LibraryBrowser(QWidget):
 
         # Wire search and selection
         self._search_box.textChanged.connect(self._proxy.setFilterFixedString)
+        self._search_box.textChanged.connect(self._update_status_label)
+        self._proxy.rowsInserted.connect(self._update_status_label)
+        self._proxy.rowsRemoved.connect(self._update_status_label)
         self._table.selectionModel().selectionChanged.connect(self._on_selection_changed)
 
         # Wire toolbar buttons
@@ -183,6 +186,9 @@ class LibraryBrowser(QWidget):
     def visible_row_count(self) -> int:
         return self._proxy.rowCount()
 
+    def status_text(self) -> str:
+        return self._status_label.text()
+
     def set_visible_columns(self, columns: list[str]) -> None:
         self._visible_columns = columns
         self._rebuild_model_columns()
@@ -217,7 +223,10 @@ class LibraryBrowser(QWidget):
             if row:
                 row[0].setData(track, Qt.ItemDataRole.UserRole)
             self._model.appendRow(row)
-        count = len(tracks)
+        self._update_status_label()
+
+    def _update_status_label(self, *_args) -> None:
+        count = self._proxy.rowCount()
         self._status_label.setText(f"{count} track{'s' if count != 1 else ''}")
 
     def _rebuild_model_columns(self) -> None:

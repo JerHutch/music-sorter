@@ -69,3 +69,47 @@ def test_library_browser_clear_filter(qtbot):
     assert browser.visible_row_count() == 1
     browser.clear_filter()
     assert browser.visible_row_count() == 2
+
+
+def test_status_label_reflects_bucket_filter(qtbot):
+    t1 = _make_track("A", bucket="House")
+    t2 = _make_track("B", bucket="Techno")
+    t3 = _make_track("C", bucket="House")
+    browser = LibraryBrowser(visible_columns=["title"])
+    qtbot.addWidget(browser)
+    browser.load_tracks([t1, t2, t3])
+    assert browser.status_text() == "3 tracks"
+    browser.filter_by_bucket("House")
+    assert browser.status_text() == "2 tracks"
+    browser.clear_filter()
+    assert browser.status_text() == "3 tracks"
+
+
+def test_status_label_reflects_search_filter(qtbot):
+    t1 = _make_track("Alpha Song", "Artist X")
+    t2 = _make_track("Beta Track", "Artist Y")
+    t3 = _make_track("Alpha Remix", "Artist Z")
+    browser = LibraryBrowser(visible_columns=["title", "artist"])
+    qtbot.addWidget(browser)
+    browser.load_tracks([t1, t2, t3])
+    assert browser.status_text() == "3 tracks"
+    # Simulate text search — proxy filters rows, status label must update
+    browser._search_box.setText("Alpha")
+    assert browser.visible_row_count() == 2
+    assert browser.status_text() == "2 tracks"
+    browser._search_box.setText("")
+    assert browser.status_text() == "3 tracks"
+
+
+def test_status_label_search_combined_with_bucket_filter(qtbot):
+    t1 = _make_track("Alpha Song", bucket="House")
+    t2 = _make_track("Beta Track", bucket="House")
+    t3 = _make_track("Alpha Remix", bucket="Techno")
+    browser = LibraryBrowser(visible_columns=["title"])
+    qtbot.addWidget(browser)
+    browser.load_tracks([t1, t2, t3])
+    browser.filter_by_bucket("House")
+    assert browser.status_text() == "2 tracks"
+    browser._search_box.setText("Alpha")
+    assert browser.visible_row_count() == 1
+    assert browser.status_text() == "1 track"
