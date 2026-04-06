@@ -3,7 +3,6 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QLabel,
-    QGroupBox,
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
@@ -80,11 +79,10 @@ class Dashboard(QWidget):
         cards_layout.addStretch()
         layout.addLayout(cards_layout)
 
-        # Charts placeholder
-        charts_group = QGroupBox("Distribution Charts")
-        charts_inner = QVBoxLayout(charts_group)
-        charts_inner.addWidget(QLabel("Charts will appear here once data is loaded."))
-        layout.addWidget(charts_group)
+        # Charts
+        from src.gui.stats_view import StatsView
+        self._stats_view = StatsView()
+        layout.addWidget(self._stats_view)
 
         layout.addStretch()
 
@@ -99,3 +97,4 @@ class Dashboard(QWidget):
         self._missing_tags_card.set_value(stats.get("missing_tags", 0))
         self._duplicates_card.set_value(stats.get("duplicates", 0))
         self._no_artwork_card.set_value(stats.get("no_artwork", 0))
+        self._stats_view.update_stats(stats)

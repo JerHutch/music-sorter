@@ -13,12 +13,15 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QLabel,
 )
+from PySide6.QtCore import Signal
 
 from src.core.config import Config
 
 
 class SettingsView(QWidget):
     """Settings panel for source directories, iTunes path, and rescan actions."""
+
+    settings_changed = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -87,10 +90,12 @@ class SettingsView(QWidget):
         path = QFileDialog.getExistingDirectory(self, "Select Music Directory")
         if path:
             self._dir_list.addItem(path)
+            self.settings_changed.emit()
 
     def _remove_directory(self) -> None:
         for item in self._dir_list.selectedItems():
             self._dir_list.takeItem(self._dir_list.row(item))
+        self.settings_changed.emit()
 
     def _browse_itunes(self) -> None:
         path, _ = QFileDialog.getOpenFileName(
@@ -98,6 +103,7 @@ class SettingsView(QWidget):
         )
         if path:
             self._itunes_path.setText(path)
+            self.settings_changed.emit()
 
     def _force_rescan(self) -> None:
         # Signal propagated via parent (main window handles it)

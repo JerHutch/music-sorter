@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from src.core.database import Database
-from src.core.models import Track
+from src.core.models import Track, PlaylistDefinition
 
 
 @pytest.fixture
@@ -97,3 +97,39 @@ def test_filter_tracks(db):
     results = db.filter_tracks(bucket="DJ Music", genre="House")
     assert len(results) == 1
     assert results[0].genre == "House"
+
+
+def test_upsert_and_get_playlist(tmp_path):
+    from src.core.database import Database
+    db = Database(tmp_path / "test.db")
+    pld = PlaylistDefinition(name="My Set", filters={"bucket": "DJ Music"}, folder="DJ", format="m3u", sort_by="bpm")
+    db.upsert_playlist(pld)
+    playlists = db.get_all_playlists()
+    assert len(playlists) == 1
+    assert playlists[0].name == "My Set"
+    assert playlists[0].filters == {"bucket": "DJ Music"}
+    assert playlists[0].folder == "DJ"
+    db.close()
+
+
+def test_delete_playlist(tmp_path):
+    from src.core.database import Database
+    db = Database(tmp_path / "test.db")
+    pld = PlaylistDefinition(name="To Delete", filters={})
+    db.upsert_playlist(pld)
+    db.delete_playlist("To Delete")
+    assert db.get_all_playlists() == []
+    db.close()
+
+
+def test_upsert_playlist_updates_existing(tmp_path):
+    from src.core.database import Database
+    db = Database(tmp_path / "test.db")
+    pld = PlaylistDefinition(name="Set A", filters={"genre": "House"}, sort_by="bpm")
+    db.upsert_playlist(pld)
+    pld2 = PlaylistDefinition(name="Set A", filters={"genre": "Techno"}, sort_by="artist")
+    db.upsert_playlist(pld2)
+    playlists = db.get_all_playlists()
+    assert len(playlists) == 1
+    assert playlists[0].filters == {"genre": "Techno"}
+    db.close()

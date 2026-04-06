@@ -8,6 +8,8 @@ import yaml
 
 _DEFAULTS_PATH = Path(__file__).parent.parent.parent / "config" / "default_config.yaml"
 
+USER_CONFIG_PATH = Path.home() / ".config" / "music-sorter" / "config.yaml"
+
 
 def _deep_merge(base: dict, override: dict) -> dict:
     """Recursively merge override into base, returning a new dict."""
@@ -25,6 +27,13 @@ class Config:
 
     def __init__(self, data: dict):
         self._data = data
+
+    @classmethod
+    def load_user_config(cls, path: Path) -> Config:
+        """Load user config if it exists, otherwise fall back to defaults."""
+        if path.exists():
+            return cls.load(path)
+        return cls.load_defaults()
 
     @classmethod
     def load_defaults(cls) -> Config:
@@ -57,6 +66,10 @@ class Config:
     def itunes_xml_path(self) -> Path | None:
         val = self._data.get("itunes_xml_path")
         return Path(val) if val else None
+
+    @itunes_xml_path.setter
+    def itunes_xml_path(self, path: Path | None) -> None:
+        self._data["itunes_xml_path"] = str(path) if path else None
 
     @property
     def required_tags(self) -> dict:
@@ -95,6 +108,11 @@ class Config:
                 if tag not in tags:
                     tags.append(tag)
         return tags
+
+    def set_visible_columns(self, columns: list[str]) -> None:
+        if "library_columns" not in self._data:
+            self._data["library_columns"] = {}
+        self._data["library_columns"]["visible"] = columns
 
     def get_rename_pattern(self, bucket: str) -> str:
         """Return the rename pattern for a bucket, falling back to default."""
