@@ -299,11 +299,6 @@ class MainWindow(QMainWindow):
     # Config
     # ------------------------------------------------------------------
 
-    def _save_config(self) -> None:
-        self._config.source_directories = self._settings_view.get_source_directories()
-        self._config.itunes_xml_path = self._settings_view.get_itunes_path()
-        self._config.save(self._config_path)
-
     def _on_columns_changed(self, columns: list[str]) -> None:
         self._config.set_visible_columns(columns)
         self._config.save(self._config_path)
@@ -484,6 +479,7 @@ class MainWindow(QMainWindow):
 
     def _on_artwork_scan(self, tracks: list[Track]) -> None:
         if self._artwork_worker and self._artwork_worker.isRunning():
+            self.statusBar().showMessage("Scan already in progress", 2000)
             return
         panel = self._tag_editor.artwork_panel
         panel.set_scanning(True)
@@ -498,7 +494,7 @@ class MainWindow(QMainWindow):
     def _on_artwork_scan_track_done(self, track: Track, success: bool) -> None:
         if success:
             panel = self._tag_editor.artwork_panel
-            if track not in panel._tracks:
+            if not panel.is_current_track(track):
                 return
             data = read_artwork(track.file_path)
             if data:

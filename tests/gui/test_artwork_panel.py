@@ -102,6 +102,17 @@ def test_set_scanning_disables_buttons(qtbot, tmp_path):
     assert panel._batch_upload_btn.isEnabled()
 
 
+def test_is_current_track(qtbot, tmp_path):
+    panel = ArtworkPanel()
+    qtbot.addWidget(panel)
+    t1 = _make_track(tmp_path, "A")
+    t2 = _make_track(tmp_path, "B")
+    with patch("src.gui.artwork_panel.read_artwork", return_value=None):
+        panel.load_track(t1)
+    assert panel.is_current_track(t1)
+    assert not panel.is_current_track(t2)
+
+
 def test_batch_upload_emits_all_tracks(qtbot, tmp_path):
     panel = ArtworkPanel()
     qtbot.addWidget(panel)

@@ -83,6 +83,10 @@ class ArtworkPanel(QWidget):
         self._placeholder_label.setVisible(False)
         self._image_label.setVisible(True)
 
+    def is_current_track(self, track: Track) -> bool:
+        """Return True if track is among the currently loaded tracks."""
+        return track in self._tracks
+
     # ------------------------------------------------------------------
     # UI construction
     # ------------------------------------------------------------------
