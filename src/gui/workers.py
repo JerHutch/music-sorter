@@ -3,6 +3,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QThread, Signal
 
+from src.core.analyzer import detect_bpm, detect_key
 from src.core.database import Database
 from src.core.deduplicator import find_duplicates
 from src.core.itunes import match_itunes_to_files, parse_itunes_xml, resolve_conflicts as _resolve_conflicts
@@ -173,3 +174,53 @@ class RenameWorker(QThread):
             logger.exception("RenameWorker failed")
             self.error.emit(str(exc))
             self.finished.emit([])
+
+
+class AnalyzeWorker(QThread):
+    """Detects BPM and key for a list of tracks, writes the results back to disk and DB.
+
+    When *overwrite* is False (auto-tag mode) only tracks missing both bpm and
+    key are processed.  When *overwrite* is True (analyze mode) all tracks are
+    processed regardless of existing values.
+    """
+
+    progress = Signal(int, int)   # completed, total
+    finished = Signal(list)       # list[Track] — updated tracks
+    error = Signal(str)
+
+    def __init__(self, tracks: list[Track], db: Database, overwrite: bool = False):
+        super().__init__()
+        self._tracks = tracks
+        self._db = db
+        self._overwrite = overwrite
+
+    def run(self):
+        candidates = (
+            self._tracks if self._overwrite
+            else [t for t in self._tracks if t.bpm is None and t.key is None]
+        )
+        total = len(candidates)
+        updated: list[Track] = []
+        for i, track in enumerate(candidates, 1):
+            try:
+                bpm = detect_bpm(track.file_path)
+                key = detect_key(track.file_path)
+                changed: list[str] = []
+                if bpm is not None:
+                    track.bpm = bpm
+                    changed.append("bpm")
+                if key is not None:
+                    track.key = key
+                    changed.append("key")
+                if changed:
+                    write_tags(track.file_path, track, changed)
+                    try:
+                        mtime = track.file_path.stat().st_mtime
+                    except OSError:
+                        mtime = 0.0
+                    upsert_track_in_db(self._db, track, file_mtime=mtime)
+                    updated.append(track)
+            except Exception:
+                logger.exception("AnalyzeWorker: failed on %s", track.file_path)
+            self.progress.emit(i, total)
+        self.finished.emit(updated)

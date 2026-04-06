@@ -65,6 +65,9 @@ class LibraryBrowser(QWidget):
 
     selection_changed = Signal(list)   # emits list[Track] when selection changes
     columns_changed = Signal(list)     # emits list[str] when user reorders/toggles
+    auto_tag_requested = Signal(list)  # emits list[Track] — fill missing BPM/key
+    analyze_requested = Signal(list)   # emits list[Track] — overwrite BPM/key
+    batch_edit_requested = Signal(list)  # emits list[Track] — open tag editor
 
     def __init__(self, visible_columns: list[str] | None = None, parent=None):
         super().__init__(parent)
@@ -91,6 +94,7 @@ class LibraryBrowser(QWidget):
         self._btn_batch = QPushButton("Batch Edit")
         self._btn_analyze = QPushButton("Analyze")
         for btn in (self._btn_autotag, self._btn_batch, self._btn_analyze):
+            btn.setEnabled(False)
             toolbar.addWidget(btn)
         layout.addWidget(toolbar)
 
@@ -129,6 +133,17 @@ class LibraryBrowser(QWidget):
         # Wire search and selection
         self._search_box.textChanged.connect(self._proxy.setFilterFixedString)
         self._table.selectionModel().selectionChanged.connect(self._on_selection_changed)
+
+        # Wire toolbar buttons
+        self._btn_autotag.clicked.connect(
+            lambda: self.auto_tag_requested.emit(self.selected_tracks())
+        )
+        self._btn_batch.clicked.connect(
+            lambda: self.batch_edit_requested.emit(self.selected_tracks())
+        )
+        self._btn_analyze.clicked.connect(
+            lambda: self.analyze_requested.emit(self.selected_tracks())
+        )
 
     # ------------------------------------------------------------------
     # Public API
@@ -250,4 +265,9 @@ class LibraryBrowser(QWidget):
             self.columns_changed.emit(list(self._visible_columns))
 
     def _on_selection_changed(self) -> None:
-        self.selection_changed.emit(self.selected_tracks())
+        tracks = self.selected_tracks()
+        has_selection = bool(tracks)
+        self._btn_autotag.setEnabled(has_selection)
+        self._btn_batch.setEnabled(has_selection)
+        self._btn_analyze.setEnabled(has_selection)
+        self.selection_changed.emit(tracks)

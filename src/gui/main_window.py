@@ -4,7 +4,7 @@ from pathlib import Path
 
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
-    QToolBar, QStackedWidget, QStatusBar, QProgressBar,
+    QToolBar, QStackedWidget, QStatusBar, QProgressBar, QPushButton,
     QTreeWidget, QTreeWidgetItem, QLabel, QSplitter, QTabWidget,
 )
 from PySide6.QtCore import Qt, QSize
@@ -23,7 +23,7 @@ from src.gui.playlist_manager import PlaylistManager
 from src.gui.rename_preview import RenamePreview
 from src.gui.settings_view import SettingsView
 from src.gui.tag_editor import TagEditor
-from src.gui.workers import ScanWorker, TagWriteWorker
+from src.gui.workers import AnalyzeWorker, ScanWorker, TagWriteWorker
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +52,7 @@ class MainWindow(QMainWindow):
         self._all_tracks: list[Track] = []
         self._scan_worker: ScanWorker | None = None
         self._tag_worker: TagWriteWorker | None = None
+        self._analyze_worker: AnalyzeWorker | None = None
 
         self._build_ui()
         self._settings_view.load_config(self._config)
@@ -138,6 +139,10 @@ class MainWindow(QMainWindow):
         self.setStatusBar(status_bar)
         self._status_label = QLabel("Ready")
         status_bar.addWidget(self._status_label, 1)
+        self._cancel_btn = QPushButton("Cancel")
+        self._cancel_btn.setVisible(False)
+        self._cancel_btn.clicked.connect(self._cancel_scan)
+        status_bar.addPermanentWidget(self._cancel_btn)
         self._progress_bar = QProgressBar()
         self._progress_bar.setRange(0, 0)
         self._progress_bar.setFixedWidth(200)
@@ -148,6 +153,10 @@ class MainWindow(QMainWindow):
         self._library.selection_changed.connect(self._on_library_selection)
         # Wire column changes → config persistence
         self._library.columns_changed.connect(self._on_columns_changed)
+        # Wire library toolbar buttons
+        self._library.auto_tag_requested.connect(self._on_auto_tag)
+        self._library.analyze_requested.connect(self._on_analyze)
+        self._library.batch_edit_requested.connect(self._on_batch_edit)
         # Wire tag editor save
         self._tag_editor.save_requested.connect(self._on_tag_save)
         # Wire dupe resolver delete
@@ -277,14 +286,23 @@ class MainWindow(QMainWindow):
         self._scan_worker.finished.connect(self._on_scan_finished)
         self._progress_bar.setRange(0, 0)
         self._progress_bar.setVisible(True)
+        self._cancel_btn.setVisible(True)
         self._status_label.setText("Scanning…")
         self._scan_worker.start()
 
     def _on_scan_progress(self, count: int, current_path: str) -> None:
         self._status_label.setText(f"Scanning… {count} files found — {current_path}")
 
+    def _cancel_scan(self) -> None:
+        if self._scan_worker and self._scan_worker.isRunning():
+            self._scan_worker.cancel()
+            self._cancel_btn.setEnabled(False)
+            self._status_label.setText("Cancelling scan…")
+
     def _on_scan_finished(self, total: int) -> None:
         self._progress_bar.setVisible(False)
+        self._cancel_btn.setVisible(False)
+        self._cancel_btn.setEnabled(True)
         self._status_label.setText(f"Scan complete — {total} files processed")
         self._refresh_library()
 
@@ -337,6 +355,49 @@ class MainWindow(QMainWindow):
             self._tag_editor.load_track(tracks[0])
         else:
             self._tag_editor.load_tracks(tracks)
+
+    def _on_batch_edit(self, tracks: list[Track]) -> None:
+        """Ensure the tag editor is visible and loaded with the selected tracks."""
+        if not tracks:
+            return
+        self._show_page(_PAGE_LIBRARY)
+        self._tag_editor.setVisible(True)
+        self._tag_editor.load_tracks(tracks)
+
+    def _on_auto_tag(self, tracks: list[Track]) -> None:
+        """Run BPM/key analysis on tracks that are missing both values."""
+        self._start_analyze(tracks, overwrite=False)
+
+    def _on_analyze(self, tracks: list[Track]) -> None:
+        """Run BPM/key analysis on all selected tracks, overwriting existing values."""
+        self._start_analyze(tracks, overwrite=True)
+
+    def _start_analyze(self, tracks: list[Track], overwrite: bool) -> None:
+        if not tracks:
+            return
+        if self._analyze_worker and self._analyze_worker.isRunning():
+            return
+        self._analyze_worker = AnalyzeWorker(tracks, self._db, overwrite=overwrite)
+        self._analyze_worker.progress.connect(self._on_analyze_progress)
+        self._analyze_worker.finished.connect(self._on_analyze_finished)
+        self._analyze_worker.error.connect(
+            lambda msg: self._status_label.setText(f"Analysis error: {msg}")
+        )
+        label = "Analyzing" if overwrite else "Auto-tagging"
+        self._status_label.setText(f"{label} {len(tracks)} track(s)…")
+        self._progress_bar.setRange(0, len(tracks))
+        self._progress_bar.setValue(0)
+        self._progress_bar.setVisible(True)
+        self._analyze_worker.start()
+
+    def _on_analyze_progress(self, completed: int, total: int) -> None:
+        self._progress_bar.setRange(0, total)
+        self._progress_bar.setValue(completed)
+
+    def _on_analyze_finished(self, updated: list) -> None:
+        self._progress_bar.setVisible(False)
+        self._status_label.setText(f"Analysis complete — {len(updated)} track(s) updated")
+        self._refresh_library()
 
     def _on_tag_save(self, tracks: list[Track], changes: dict[str, str]) -> None:
         if self._tag_worker and self._tag_worker.isRunning():
@@ -419,6 +480,7 @@ class MainWindow(QMainWindow):
         for worker in (
             self._scan_worker,
             self._tag_worker,
+            self._analyze_worker,
             getattr(self._dupe_resolver, "_worker", None),
             getattr(self._rename_preview, "_worker", None),
             getattr(self._itunes_import, "_worker", None),
