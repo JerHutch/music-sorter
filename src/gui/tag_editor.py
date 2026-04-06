@@ -9,6 +9,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
 
 from src.core.models import Track
+from src.gui.artwork_panel import ArtworkPanel
 
 import logging
 logger = logging.getLogger(__name__)
@@ -45,6 +46,7 @@ class TagEditor(QWidget):
         super().__init__(parent)
         self._tracks: list[Track] = []
         self._fields: dict[str, QLineEdit] = {}
+        self._artwork_panel = ArtworkPanel()
         self._build_ui()
 
     # ------------------------------------------------------------------
@@ -65,6 +67,10 @@ class TagEditor(QWidget):
             self._populate_single(tracks[0])
         else:
             self._populate_batch(tracks)
+
+    @property
+    def artwork_panel(self) -> ArtworkPanel:
+        return self._artwork_panel
 
     def get_field_value(self, field: str) -> str:
         """Return current text for field, or placeholder text if text is empty but placeholder is set."""
@@ -94,6 +100,8 @@ class TagEditor(QWidget):
         separator = QFrame()
         separator.setFrameShape(QFrame.Shape.HLine)
         outer.addWidget(separator)
+
+        outer.addWidget(self._artwork_panel)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -142,8 +150,10 @@ class TagEditor(QWidget):
             w.setText("")
             w.setPlaceholderText("")
             w.setStyleSheet(_STYLE_NORMAL)
+        self._artwork_panel.clear()
 
     def _populate_single(self, track: Track) -> None:
+        self._artwork_panel.load_track(track)
         self._mode_label.setText("Tag Editor — single track")
         for field, _ in _EDITABLE_FIELDS:
             val = getattr(track, field, None)
@@ -153,6 +163,7 @@ class TagEditor(QWidget):
         self._apply_required_highlighting()
 
     def _populate_batch(self, tracks: list[Track]) -> None:
+        self._artwork_panel.load_batch(tracks)
         self._mode_label.setText(f"Batch Edit — {len(tracks)} tracks")
         for field, _ in _EDITABLE_FIELDS:
             values = {str(getattr(t, field, "") or "") for t in tracks}
