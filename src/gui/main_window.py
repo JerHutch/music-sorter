@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QTreeWidget, QTreeWidgetItem, QLabel, QSplitter, QTabWidget,
 )
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QColor
 
 import logging
 
@@ -175,46 +175,75 @@ class MainWindow(QMainWindow):
         sidebar.setFixedWidth(220)
         sidebar.setObjectName("sidebar")
         sidebar.setStyleSheet(
-            "#sidebar { background: #2b2b2b; border-right: 1px solid #444; }"
+            "#sidebar { background: #16163a; border-right: 1px solid #2a2a4a; }"
         )
         layout = QVBoxLayout(sidebar)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(8)
+        layout.setContentsMargins(15, 15, 15, 15)
+        layout.setSpacing(4)
 
-        # Buckets
+        _section_style = (
+            "color: #7c83ff; font-weight: bold; font-size: 11px;"
+            " text-transform: uppercase; letter-spacing: 1px;"
+        )
+        _tree_style = (
+            "QTreeWidget {"
+            "  background: transparent;"
+            "  color: #cccccc;"
+            "  border: none;"
+            "  font-size: 13px;"
+            "}"
+            "QTreeWidget::item {"
+            "  padding: 4px 4px;"
+            "  border-radius: 4px;"
+            "}"
+            "QTreeWidget::item:selected {"
+            "  background: #2a2a4a;"
+            "  color: #ffffff;"
+            "}"
+            "QTreeWidget::item:hover:!selected {"
+            "  background: #1e1e44;"
+            "}"
+        )
+
+        # ---- Buckets section ----
         buckets_lbl = QLabel("Buckets")
-        buckets_lbl.setStyleSheet("color: #aaa; font-weight: bold; font-size: 11px;")
+        buckets_lbl.setStyleSheet(_section_style)
         layout.addWidget(buckets_lbl)
+
         self._buckets_tree = QTreeWidget()
         self._buckets_tree.setHeaderHidden(True)
         self._buckets_tree.setRootIsDecorated(False)
-        self._buckets_tree.setStyleSheet(
-            "QTreeWidget { background: transparent; color: #ddd; border: none; }"
-            "QTreeWidget::item:selected { background: #444; }"
-        )
+        self._buckets_tree.setStyleSheet(_tree_style)
+        self._buckets_tree.setIndentation(0)
+
         self._bucket_items: dict[str, QTreeWidgetItem] = {}
-        all_item = QTreeWidgetItem(["All Music"])
+        all_item = QTreeWidgetItem(["📁 All Music"])
         self._buckets_tree.addTopLevelItem(all_item)
         self._bucket_items["All Music"] = all_item
         self._buckets_tree.itemClicked.connect(self._on_bucket_clicked)
         layout.addWidget(self._buckets_tree)
 
-        # Task queue
+        # ---- Task Queue section ----
         queue_lbl = QLabel("Task Queue")
-        queue_lbl.setStyleSheet("color: #aaa; font-weight: bold; font-size: 11px;")
+        queue_lbl.setStyleSheet("margin-top: 11px; " + _section_style)
         layout.addWidget(queue_lbl)
+
         self._task_tree = QTreeWidget()
         self._task_tree.setHeaderHidden(True)
         self._task_tree.setRootIsDecorated(False)
-        self._task_tree.setStyleSheet(
-            "QTreeWidget { background: transparent; color: #ddd; border: none; }"
-            "QTreeWidget::item:selected { background: #444; }"
-        )
+        self._task_tree.setIndentation(0)
+        self._task_tree.setStyleSheet(_tree_style)
+
         self._task_items: dict[str, QTreeWidgetItem] = {}
-        for task in ("Missing Tags", "No Artwork"):
-            item = QTreeWidgetItem([task])
+        _task_defs = [
+            ("Missing Tags", "⚠ Missing Tags", "#ff6b6b"),
+            ("No Artwork",   "🖼 No Artwork",   "#ffa94d"),
+        ]
+        for task_key, task_label, task_color in _task_defs:
+            item = QTreeWidgetItem([task_label])
+            item.setForeground(0, QColor(task_color))
             self._task_tree.addTopLevelItem(item)
-            self._task_items[task] = item
+            self._task_items[task_key] = item
         self._task_tree.itemClicked.connect(self._on_task_clicked)
         layout.addWidget(self._task_tree)
 
@@ -239,12 +268,22 @@ class MainWindow(QMainWindow):
     # Sidebar
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _strip_sidebar_label(text: str) -> str:
+        """Remove leading emoji + space and trailing ' (count)' from a sidebar label."""
+        # Strip trailing count like ' (123)'
+        name = text.split(" (")[0]
+        # Strip any leading non-alphanumeric characters (emoji prefix + space)
+        import re
+        name = re.sub(r"^[^\w]+", "", name).strip()
+        return name
+
     def _on_bucket_clicked(self, item: QTreeWidgetItem, _col: int) -> None:
         self._show_page(_PAGE_LIBRARY)
-        self._library.filter_by_bucket(item.text(0).split(" (")[0])
+        self._library.filter_by_bucket(self._strip_sidebar_label(item.text(0)))
 
     def _on_task_clicked(self, item: QTreeWidgetItem, _col: int) -> None:
-        task = item.text(0).split(" (")[0]
+        task = self._strip_sidebar_label(item.text(0))
         self._show_page(_PAGE_LIBRARY)
         if task == "Missing Tags":
             self._library.filter_by_fn(lambda t: t.tag_completeness < 0.4)
@@ -334,7 +373,7 @@ class MainWindow(QMainWindow):
     def _update_sidebar_counts(self, missing_tags: int, no_artwork: int,
                                 bucket_counts: dict) -> None:
         total = len(self._all_tracks)
-        self._bucket_items["All Music"].setText(0, f"All Music ({total})")
+        self._bucket_items["All Music"].setText(0, f"📁 All Music ({total})")
 
         # Remove all bucket items except "All Music", then rebuild from live data
         for name in list(self._bucket_items.keys()):
@@ -344,18 +383,18 @@ class MainWindow(QMainWindow):
                 )
         for bucket in sorted(bucket_counts.keys()):
             count = bucket_counts[bucket]
-            item = QTreeWidgetItem([f"{bucket} ({count})"])
+            item = QTreeWidgetItem([f"📁 {bucket} ({count})"])
             self._buckets_tree.addTopLevelItem(item)
             self._bucket_items[bucket] = item
 
         uncategorized = sum(1 for t in self._all_tracks if not t.bucket)
         if uncategorized:
-            item = QTreeWidgetItem([f"Uncategorized ({uncategorized})"])
+            item = QTreeWidgetItem([f"📁 Uncategorized ({uncategorized})"])
             self._buckets_tree.addTopLevelItem(item)
             self._bucket_items["Uncategorized"] = item
 
-        self._task_items["Missing Tags"].setText(0, f"Missing Tags ({missing_tags})")
-        self._task_items["No Artwork"].setText(0, f"No Artwork ({no_artwork})")
+        self._task_items["Missing Tags"].setText(0, f"⚠ Missing Tags ({missing_tags})")
+        self._task_items["No Artwork"].setText(0, f"🖼 No Artwork ({no_artwork})")
 
     # ------------------------------------------------------------------
     # Tag editing
