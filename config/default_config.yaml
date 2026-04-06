@@ -75,6 +75,6 @@ library_columns:
 
 logging:
   level: INFO             # root log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-  console_level: WARNING  # stderr level — can be quieter than the file
+  console_level: WARNING # stderr level — can be quieter than the file
   file: ~/.music-sorter/logs/app.log
   max_days: 7

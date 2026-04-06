@@ -105,11 +105,11 @@ class Database:
 
     def __init__(self, db_path: Path) -> None:
         self._path = db_path
-        self._conn = sqlite3.connect(str(db_path))
+        self._conn = sqlite3.connect(str(db_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute("PRAGMA foreign_keys=ON")
-        self._lock = threading.RLock()
+        self._lock = threading.Lock()
         self._setup_schema()
 
     def _setup_schema(self) -> None:
@@ -189,27 +189,28 @@ class Database:
             "file_mtime": file_mtime,
         }
         try:
-            self._conn.execute(sql, params)
-            if self._fts_available:
-                self._conn.execute(
-                    "DELETE FROM tracks_fts WHERE file_path = ?",
-                    (str(track.file_path),),
-                )
-                self._conn.execute(
-                    """INSERT INTO tracks_fts
-                       (file_path, title, artist, album, album_artist, genre, bucket)
-                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                    (
-                        str(track.file_path),
-                        track.title or "",
-                        track.artist or "",
-                        track.album or "",
-                        track.album_artist or "",
-                        track.genre or "",
-                        track.bucket or "",
-                    ),
-                )
-            self._conn.commit()
+            with self._lock:
+                self._conn.execute(sql, params)
+                if self._fts_available:
+                    self._conn.execute(
+                        "DELETE FROM tracks_fts WHERE file_path = ?",
+                        (str(track.file_path),),
+                    )
+                    self._conn.execute(
+                        """INSERT INTO tracks_fts
+                           (file_path, title, artist, album, album_artist, genre, bucket)
+                           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                        (
+                            str(track.file_path),
+                            track.title or "",
+                            track.artist or "",
+                            track.album or "",
+                            track.album_artist or "",
+                            track.genre or "",
+                            track.bucket or "",
+                        ),
+                    )
+                self._conn.commit()
         except Exception:
             logger.error("Failed to upsert track: %s", track.file_path, exc_info=True)
             raise

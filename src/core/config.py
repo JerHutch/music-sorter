@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import copy
+import logging
 from pathlib import Path
 
 import yaml
 
+logger = logging.getLogger(__name__)
 
 _DEFAULTS_PATH = Path(__file__).parent.parent.parent / "config" / "default_config.yaml"
-
 USER_CONFIG_PATH = Path.home() / ".config" / "music-sorter" / "config.yaml"
 
 
@@ -29,11 +30,26 @@ class Config:
         self._data = data
 
     @classmethod
-    def load_user_config(cls, path: Path) -> Config:
-        """Load user config if it exists, otherwise fall back to defaults."""
-        if path.exists():
+    def load_user_config(cls, path: Path = USER_CONFIG_PATH) -> "Config":
+        """Load config from user path, creating it from defaults if absent."""
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            logger.error("Failed to create config directory: %s", path.parent, exc_info=True)
+
+        if not path.exists():
+            config = cls.load_defaults()
+            try:
+                config.save(path)
+            except OSError:
+                logger.error("Failed to save default config to: %s", path, exc_info=True)
+            return config
+
+        try:
             return cls.load(path)
-        return cls.load_defaults()
+        except Exception:
+            logger.error("Failed to load config from: %s", path, exc_info=True)
+            return cls.load_defaults()
 
     @classmethod
     def load_defaults(cls) -> Config:
@@ -50,9 +66,34 @@ class Config:
         merged = _deep_merge(defaults, overrides)
         return cls(merged)
 
+    @classmethod
+    def load_user_config(cls, path: Path = USER_CONFIG_PATH) -> "Config":
+        """Load config from user path, creating it from defaults if absent."""
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            logger.error("Failed to create config directory: %s", path.parent, exc_info=True)
+
+        if not path.exists():
+            config = cls.load_defaults()
+            try:
+                config.save(path)
+            except OSError:
+                logger.error("Failed to save default config to: %s", path, exc_info=True)
+            return config
+
+        try:
+            return cls.load(path)
+        except Exception:
+            logger.error("Failed to load config from: %s", path, exc_info=True)
+            return cls.load_defaults()
+
     def save(self, path: Path) -> None:
-        with open(path, "w") as f:
-            yaml.dump(self._data, f, default_flow_style=False, sort_keys=False)
+        try:
+            with open(path, "w") as f:
+                yaml.dump(self._data, f, default_flow_style=False, sort_keys=False)
+        except OSError:
+            logger.error("Failed to save config to: %s", path, exc_info=True)
 
     @property
     def source_directories(self) -> list[Path]:

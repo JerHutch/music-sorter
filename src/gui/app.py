@@ -6,7 +6,7 @@ from src.gui.main_window import MainWindow
 
 
 def main():
-    config = Config.load_defaults()
+    config = Config.load_user_config()
     setup_logging(config)
     app = QApplication(sys.argv)
     app.setApplicationName("Music Sorter")

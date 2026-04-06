@@ -256,6 +256,11 @@ class MainWindow(QMainWindow):
         self._config.set_visible_columns(columns)
         self._config.save(self._config_path)
 
+    def _save_config(self) -> None:
+        self._config.source_directories = self._settings_view.get_source_directories()
+        self._config.itunes_xml_path = self._settings_view.get_itunes_path()
+        self._config.save(self._config_path)
+
     # ------------------------------------------------------------------
     # Scanning
     # ------------------------------------------------------------------
