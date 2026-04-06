@@ -23,8 +23,8 @@ from src.gui.playlist_manager import PlaylistManager
 from src.gui.rename_preview import RenamePreview
 from src.gui.settings_view import SettingsView
 from src.gui.tag_editor import TagEditor
-from src.gui.workers import AnalyzeWorker, ArtworkWorker, ScanWorker, TagWriteWorker
 from src.core.artwork import embed_artwork, read_artwork
+from src.gui.workers import AnalyzeWorker, ArtworkWorker, ScanWorker, TagWriteWorker
 
 logger = logging.getLogger(__name__)
 
@@ -483,6 +483,8 @@ class MainWindow(QMainWindow):
         self._refresh_library()
 
     def _on_artwork_scan(self, tracks: list[Track]) -> None:
+        if self._artwork_worker and self._artwork_worker.isRunning():
+            return
         panel = self._tag_editor.artwork_panel
         panel.set_scanning(True)
         self._artwork_worker = ArtworkWorker(tracks)
@@ -495,9 +497,12 @@ class MainWindow(QMainWindow):
 
     def _on_artwork_scan_track_done(self, track: Track, success: bool) -> None:
         if success:
+            panel = self._tag_editor.artwork_panel
+            if track not in panel._tracks:
+                return
             data = read_artwork(track.file_path)
             if data:
-                self._tag_editor.artwork_panel.show_artwork(data)
+                panel.show_artwork(data)
 
     def _on_artwork_upload(self, tracks: list[Track], image_bytes: bytes) -> None:
         for track in tracks:
@@ -566,6 +571,7 @@ class MainWindow(QMainWindow):
             self._scan_worker,
             self._tag_worker,
             self._analyze_worker,
+            self._artwork_worker,
             getattr(self._dupe_resolver, "_worker", None),
             getattr(self._rename_preview, "_worker", None),
             getattr(self._itunes_import, "_worker", None),
