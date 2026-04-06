@@ -29,7 +29,11 @@ def find_local_artwork(path: Path) -> bytes | None:
         return None
     for name in _COVER_CANDIDATES:
         if name in files:
-            return files[name].read_bytes()
+            try:
+                return files[name].read_bytes()
+            except OSError:
+                logger.warning("find_local_artwork: could not read %s", files[name])
+                return None
     return None
 
 
