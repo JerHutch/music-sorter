@@ -3,6 +3,8 @@ from pathlib import Path
 
 from PySide6.QtCore import QThread, Signal
 
+from src.core.artwork import embed_artwork, find_local_artwork, search_cover_art
+import src.core.artwork as _artwork_mod
 from src.core.analyzer import detect_bpm, detect_key
 from src.core.database import Database
 from src.core.deduplicator import find_duplicates
@@ -11,8 +13,6 @@ from src.core.models import DupeGroup, RenameOperation, TagConflict, Track
 from src.core.organizer import execute_rename_plan
 from src.core.scanner import scan_directories
 from src.core.tagger import COMPLETENESS_FIELDS, read_tags, write_tags
-from src.core.artwork import find_local_artwork, search_cover_art, embed_artwork
-import src.core.artwork as _artwork_mod
 
 logger = logging.getLogger(__name__)
 

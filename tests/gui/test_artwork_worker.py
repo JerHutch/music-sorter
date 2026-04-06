@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 from src.core.models import Track
@@ -32,6 +32,7 @@ def test_artwork_worker_local_found_embeds_and_signals_success(qtbot, tmp_path):
          patch("src.gui.workers.embed_artwork") as mock_embed:
         with qtbot.waitSignal(worker.done, timeout=5000):
             worker.start()
+    mock_find.assert_called_once_with(track.file_path)
     mock_embed.assert_called_once_with(track.file_path, _PNG_1X1)
     assert results == [(track, True)]
 
@@ -72,8 +73,7 @@ def test_artwork_worker_musicbrainz_unavailable_emits_status(qtbot, tmp_path):
     messages = []
     worker.status_message.connect(messages.append)
     with patch("src.gui.workers.find_local_artwork", return_value=None), \
-         patch("src.gui.workers._artwork_mod") as mock_mod:
-        mock_mod.musicbrainzngs = None
+         patch("src.core.artwork.musicbrainzngs", None):
         with qtbot.waitSignal(worker.done, timeout=5000):
             worker.start()
     assert any("unavailable" in m.lower() for m in messages)
