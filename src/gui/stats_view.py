@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from PySide6.QtWidgets import QWidget, QGridLayout
+from PySide6.QtWidgets import QWidget, QGridLayout, QVBoxLayout, QPushButton
 from PySide6.QtCharts import (
     QChart, QChartView,
     QPieSeries,
     QBarSeries, QBarSet, QBarCategoryAxis, QValueAxis,
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QPainter
 
 
@@ -19,37 +19,106 @@ def _make_chart(title: str) -> QChart:
     return chart
 
 
-def _chart_view(chart: QChart) -> QChartView:
-    view = QChartView(chart)
-    view.setRenderHint(QPainter.RenderHint.Antialiasing)
-    view.setMinimumHeight(200)
-    return view
+class ClickableChartView(QChartView):
+    """A QChartView that emits clicked() on mouse press."""
+
+    clicked = Signal()
+
+    def __init__(self, chart: QChart, parent=None):
+        super().__init__(chart, parent)
+        self.setRenderHint(QPainter.RenderHint.Antialiasing)
+        self.setMinimumHeight(200)
+
+    def mousePressEvent(self, event):
+        super().mousePressEvent(event)
+        self.clicked.emit()
 
 
 class StatsView(QWidget):
-    """Charts for tag completeness, genre distribution, bitrate, and storage."""
+    """Charts for tag completeness, genre distribution, bitrate, and storage.
+
+    Clicking any chart zooms it to fill the full stats area.  The overview
+    stat-cards above (in Dashboard) remain visible.  A back button returns
+    to the 2×2 grid view.
+    """
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        layout = QGridLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
 
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(4)
+
+        self._back_btn = QPushButton("← All Charts")
+        self._back_btn.setVisible(False)
+        self._back_btn.clicked.connect(self._zoom_out)
+        outer.addWidget(self._back_btn)
+
+        # Grid container (normal view)
+        self._grid_widget = QWidget()
+        self._grid_layout = QGridLayout(self._grid_widget)
+        self._grid_layout.setContentsMargins(0, 0, 0, 0)
+        self._grid_layout.setSpacing(8)
+        outer.addWidget(self._grid_widget)
+
+        # Zoomed container (single chart view)
+        self._zoomed_widget = QWidget()
+        self._zoomed_layout = QVBoxLayout(self._zoomed_widget)
+        self._zoomed_layout.setContentsMargins(0, 0, 0, 0)
+        self._zoomed_widget.setVisible(False)
+        outer.addWidget(self._zoomed_widget)
+
+        # Build charts
         self._completeness_chart = _make_chart("Tag Completeness")
-        self._completeness_view = _chart_view(self._completeness_chart)
-        layout.addWidget(self._completeness_view, 0, 0)
-
         self._genre_chart = _make_chart("Genre Distribution")
-        self._genre_view = _chart_view(self._genre_chart)
-        layout.addWidget(self._genre_view, 0, 1)
-
         self._bitrate_chart = _make_chart("Bitrate Distribution")
-        self._bitrate_view = _chart_view(self._bitrate_chart)
-        layout.addWidget(self._bitrate_view, 1, 0)
-
         self._bucket_chart = _make_chart("Tracks per Bucket")
-        self._bucket_view = _chart_view(self._bucket_chart)
-        layout.addWidget(self._bucket_view, 1, 1)
+
+        self._completeness_view = ClickableChartView(self._completeness_chart)
+        self._genre_view = ClickableChartView(self._genre_chart)
+        self._bitrate_view = ClickableChartView(self._bitrate_chart)
+        self._bucket_view = ClickableChartView(self._bucket_chart)
+
+        # Grid positions keyed by view
+        self._grid_positions: dict[ClickableChartView, tuple[int, int]] = {
+            self._completeness_view: (0, 0),
+            self._genre_view: (0, 1),
+            self._bitrate_view: (1, 0),
+            self._bucket_view: (1, 1),
+        }
+        for view, (row, col) in self._grid_positions.items():
+            self._grid_layout.addWidget(view, row, col)
+            view.clicked.connect(lambda v=view: self._zoom_in(v))
+
+        self._current_zoomed: ClickableChartView | None = None
+
+    # ------------------------------------------------------------------
+    # Zoom
+    # ------------------------------------------------------------------
+
+    def _zoom_in(self, view: ClickableChartView) -> None:
+        if self._current_zoomed is not None:
+            return
+        self._current_zoomed = view
+        self._grid_widget.hide()
+        self._zoomed_layout.addWidget(view)   # reparents view to zoomed container
+        self._zoomed_widget.show()
+        self._back_btn.show()
+
+    def _zoom_out(self) -> None:
+        if self._current_zoomed is None:
+            return
+        view = self._current_zoomed
+        row, col = self._grid_positions[view]
+        self._zoomed_widget.hide()
+        self._back_btn.hide()
+        self._grid_layout.addWidget(view, row, col)  # reparents back to grid
+        self._grid_widget.show()
+        self._current_zoomed = None
+
+    # ------------------------------------------------------------------
+    # Data updates
+    # ------------------------------------------------------------------
 
     def update_stats(self, stats: dict) -> None:
         self._update_completeness(stats)

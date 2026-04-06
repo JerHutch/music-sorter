@@ -24,7 +24,7 @@ from src.core.models import Track
 logger = logging.getLogger(__name__)
 
 # Fields checked for completeness scoring — mirrors required_tags.global in default_config.yaml
-_COMPLETENESS_FIELDS = ["title", "artist", "album", "genre", "year", "bucket"]
+COMPLETENESS_FIELDS = ["title", "artist", "album", "genre", "year", "bucket"]
 
 
 def _get_text(tags, key: str) -> str | None:
@@ -84,7 +84,7 @@ def read_tags(path: Path) -> Track:
         bucket=_get_txxx(tags, "MUSIC_SORTER_BUCKET"),
         has_artwork=any(k.startswith("APIC") for k in tags),
     )
-    track.tag_completeness = track.compute_completeness(_COMPLETENESS_FIELDS)
+    track.tag_completeness = track.compute_completeness(COMPLETENESS_FIELDS)
     return track
 
 

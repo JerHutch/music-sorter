@@ -10,7 +10,7 @@ from src.core.itunes import match_itunes_to_files, parse_itunes_xml, resolve_con
 from src.core.models import DupeGroup, RenameOperation, TagConflict, Track
 from src.core.organizer import execute_rename_plan
 from src.core.scanner import scan_directories
-from src.core.tagger import read_tags, write_tags
+from src.core.tagger import COMPLETENESS_FIELDS, read_tags, write_tags
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +107,7 @@ class TagWriteWorker(QThread):
         for i, (track, fields) in enumerate(self._pairs, 1):
             try:
                 write_tags(track.file_path, track, fields)
+                track.tag_completeness = track.compute_completeness(COMPLETENESS_FIELDS)
                 try:
                     mtime = track.file_path.stat().st_mtime
                 except OSError:
@@ -214,6 +215,7 @@ class AnalyzeWorker(QThread):
                     changed.append("key")
                 if changed:
                     write_tags(track.file_path, track, changed)
+                    track.tag_completeness = track.compute_completeness(COMPLETENESS_FIELDS)
                     try:
                         mtime = track.file_path.stat().st_mtime
                     except OSError:

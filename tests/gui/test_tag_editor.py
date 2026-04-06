@@ -46,3 +46,43 @@ def test_tag_editor_empty_when_no_tracks(qtbot):
     qtbot.addWidget(editor)
     editor.load_tracks([])
     assert editor.get_field_value("title") == ""
+
+
+def test_tag_editor_highlights_missing_required_fields(qtbot):
+    """Required fields that are empty should have a non-default stylesheet."""
+    editor = TagEditor()
+    qtbot.addWidget(editor)
+    # Track with no title, artist, album, genre, year, or bucket
+    track = Track(
+        file_path=Path("/tmp/a.mp3"), file_size=1000, bitrate=320, duration=200.0,
+    )
+    editor.load_track(track)
+    # title is required and empty — should have non-empty stylesheet
+    assert editor._fields["title"].styleSheet() != ""
+    # bpm is not required — should have no styling applied
+    assert editor._fields["bpm"].styleSheet() == ""
+
+
+def test_tag_editor_no_highlight_when_required_fields_filled(qtbot):
+    """Required fields that are filled should have no highlight styling."""
+    editor = TagEditor()
+    qtbot.addWidget(editor)
+    track = _make_track(title="Title", artist="Artist")
+    track.album = "Album"
+    track.genre = "House"
+    track.year = 2024
+    track.bucket = "DJ Music"
+    editor.load_track(track)
+    for field in ("title", "artist", "album", "genre", "year", "bucket"):
+        assert editor._fields[field].styleSheet() == "", f"{field} should not be highlighted"
+
+
+def test_tag_editor_batch_multiple_not_highlighted(qtbot):
+    """In batch mode, a field showing [Multiple] is not considered missing."""
+    editor = TagEditor()
+    qtbot.addWidget(editor)
+    t1 = _make_track("/tmp/a.mp3", title="Song A")
+    t2 = _make_track("/tmp/b.mp3", title="Song B")
+    editor.load_tracks([t1, t2])
+    # title shows [Multiple] — should not be highlighted as missing
+    assert editor._fields["title"].styleSheet() == ""

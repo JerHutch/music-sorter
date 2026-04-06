@@ -27,7 +27,13 @@ _EDITABLE_FIELDS: list[tuple[str, str]] = [
     ("bucket",       "Bucket"),
 ]
 
+# Mirrors COMPLETENESS_FIELDS / required_tags.global in the default config
+_REQUIRED_FIELDS: frozenset[str] = frozenset(["title", "artist", "album", "genre", "year", "bucket"])
+
 _MULTIPLE = "[Multiple]"
+
+_STYLE_REQUIRED_MISSING = "QLineEdit { border: 1px solid #e74c3c; background: #fdf0ef; }"
+_STYLE_NORMAL = ""
 
 
 class TagEditor(QWidget):
@@ -119,10 +125,23 @@ class TagEditor(QWidget):
     # Internal helpers
     # ------------------------------------------------------------------
 
+    def _apply_required_highlighting(self) -> None:
+        """Highlight required fields that are empty (not set on any loaded track)."""
+        for field, widget in self._fields.items():
+            if field not in _REQUIRED_FIELDS:
+                widget.setStyleSheet(_STYLE_NORMAL)
+                continue
+            text = widget.text()
+            placeholder = widget.placeholderText()
+            # A field is considered present if it has text OR shows [Multiple]
+            is_present = bool(text) or placeholder == _MULTIPLE
+            widget.setStyleSheet(_STYLE_NORMAL if is_present else _STYLE_REQUIRED_MISSING)
+
     def _clear_fields(self) -> None:
         for w in self._fields.values():
             w.setText("")
             w.setPlaceholderText("")
+            w.setStyleSheet(_STYLE_NORMAL)
 
     def _populate_single(self, track: Track) -> None:
         self._mode_label.setText("Tag Editor — single track")
@@ -131,6 +150,7 @@ class TagEditor(QWidget):
             self._fields[field].setText("" if val is None else str(val))
             self._fields[field].setPlaceholderText("")
         self._save_btn.setEnabled(True)
+        self._apply_required_highlighting()
 
     def _populate_batch(self, tracks: list[Track]) -> None:
         self._mode_label.setText(f"Batch Edit — {len(tracks)} tracks")
@@ -143,6 +163,7 @@ class TagEditor(QWidget):
                 self._fields[field].setText("")
                 self._fields[field].setPlaceholderText(_MULTIPLE)
         self._save_btn.setEnabled(True)
+        self._apply_required_highlighting()
 
     def _on_save_clicked(self) -> None:
         if not self._tracks:

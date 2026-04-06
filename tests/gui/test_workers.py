@@ -37,6 +37,23 @@ def test_tag_write_worker_emits_finished(qtbot, tmp_path):
     assert len(done) == 1
 
 
+def test_tag_write_worker_recomputes_completeness(qtbot, tmp_path):
+    """TagWriteWorker should update tag_completeness after writing tags."""
+    track = _make_track(str(tmp_path / "a.mp3"), completeness=0.0)
+    track.title = "Title"
+    track.artist = "Artist"
+    track.album = "Album"
+    track.genre = "House"
+    track.year = 2024
+    track.bucket = "DJ Music"
+    with patch("src.gui.workers.write_tags"):
+        with patch("src.gui.workers.upsert_track_in_db"):
+            worker = TagWriteWorker([(track, ["bucket"])], db=MagicMock())
+            with qtbot.waitSignal(worker.finished, timeout=3000):
+                worker.start()
+    assert track.tag_completeness == 1.0
+
+
 def test_itunes_worker_emits_finished(qtbot, tmp_path):
     xml_path = tmp_path / "iTunes.xml"
     xml_path.write_bytes(b"")

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from src.core.tagger import read_tags, write_tags
+from src.core.tagger import COMPLETENESS_FIELDS, read_tags, write_tags
 
 
 def test_read_tags_fully_tagged(tagged_full_mp3):
@@ -77,6 +77,29 @@ def test_write_tags_adds_id3_to_untagged(untagged_mp3):
     reloaded = read_tags(untagged_mp3)
     assert reloaded.title == "New Song"
     assert reloaded.artist == "New Artist"
+
+
+def test_read_tags_computes_completeness_for_full_track(tagged_full_mp3):
+    """read_tags should set tag_completeness > 0 when fields are present."""
+    track = read_tags(tagged_full_mp3)
+    assert track.tag_completeness > 0.0
+
+
+def test_read_tags_completeness_partial_track(tagged_partial_mp3):
+    """Partial track (missing album, year, bucket) should have completeness < 1.0."""
+    track = read_tags(tagged_partial_mp3)
+    assert 0.0 < track.tag_completeness < 1.0
+
+
+def test_read_tags_completeness_untagged(untagged_mp3):
+    """Untagged track should have completeness == 0.0."""
+    track = read_tags(untagged_mp3)
+    assert track.tag_completeness == 0.0
+
+
+def test_completeness_fields_is_public():
+    """COMPLETENESS_FIELDS should be importable and non-empty."""
+    assert len(COMPLETENESS_FIELDS) > 0
 
 
 def test_compute_completeness_with_config():
