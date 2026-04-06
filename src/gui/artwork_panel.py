@@ -26,7 +26,6 @@ class ArtworkPanel(QWidget):
         super().__init__(parent)
         self._tracks: list[Track] = []
         self._build_ui()
-        self.show()
 
     # ------------------------------------------------------------------
     # Public API

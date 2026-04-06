@@ -15,7 +15,7 @@ _PNG_1X1 = (
 
 
 def _make_track(tmp_path, title="Test Track"):
-    p = tmp_path / "track.mp3"
+    p = tmp_path / f"{title}.mp3"
     p.write_bytes(b"")
     return Track(
         file_path=p, file_size=1000, bitrate=320, duration=200.0,
@@ -29,7 +29,7 @@ def test_load_track_with_artwork_shows_image(qtbot, tmp_path):
     track = _make_track(tmp_path)
     with patch("src.gui.artwork_panel.read_artwork", return_value=_PNG_1X1):
         panel.load_track(track)
-    assert panel._image_label.isVisible()
+    assert not panel._image_label.isHidden()
     assert not panel._placeholder_label.isVisible()
 
 
@@ -40,7 +40,7 @@ def test_load_track_without_artwork_shows_placeholder(qtbot, tmp_path):
     with patch("src.gui.artwork_panel.read_artwork", return_value=None):
         panel.load_track(track)
     assert not panel._image_label.isVisible()
-    assert panel._placeholder_label.isVisible()
+    assert not panel._placeholder_label.isHidden()
 
 
 def test_load_batch_shows_batch_ui(qtbot, tmp_path):
@@ -48,7 +48,7 @@ def test_load_batch_shows_batch_ui(qtbot, tmp_path):
     qtbot.addWidget(panel)
     tracks = [_make_track(tmp_path, f"Track {i}") for i in range(3)]
     panel.load_batch(tracks)
-    assert panel._batch_widget.isVisible()
+    assert not panel._batch_widget.isHidden()
     assert not panel._single_btns.isVisible()
     assert "3" in panel._batch_label.text()
 
