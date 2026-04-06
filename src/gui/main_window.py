@@ -193,10 +193,9 @@ class MainWindow(QMainWindow):
             "QTreeWidget::item:selected { background: #444; }"
         )
         self._bucket_items: dict[str, QTreeWidgetItem] = {}
-        for bucket in ("All Music", "DJ Music", "DJ Mixes", "General"):
-            item = QTreeWidgetItem([bucket])
-            self._buckets_tree.addTopLevelItem(item)
-            self._bucket_items[bucket] = item
+        all_item = QTreeWidgetItem(["All Music"])
+        self._buckets_tree.addTopLevelItem(all_item)
+        self._bucket_items["All Music"] = all_item
         self._buckets_tree.itemClicked.connect(self._on_bucket_clicked)
         layout.addWidget(self._buckets_tree)
 
@@ -336,9 +335,19 @@ class MainWindow(QMainWindow):
                                 bucket_counts: dict) -> None:
         total = len(self._all_tracks)
         self._bucket_items["All Music"].setText(0, f"All Music ({total})")
-        for bucket in ("DJ Music", "DJ Mixes", "General"):
-            count = bucket_counts.get(bucket, 0)
-            self._bucket_items[bucket].setText(0, f"{bucket} ({count})")
+
+        # Remove all bucket items except "All Music", then rebuild from live data
+        for name in list(self._bucket_items.keys()):
+            if name != "All Music":
+                self._buckets_tree.takeTopLevelItem(
+                    self._buckets_tree.indexOfTopLevelItem(self._bucket_items.pop(name))
+                )
+        for bucket in sorted(bucket_counts.keys()):
+            count = bucket_counts[bucket]
+            item = QTreeWidgetItem([f"{bucket} ({count})"])
+            self._buckets_tree.addTopLevelItem(item)
+            self._bucket_items[bucket] = item
+
         self._task_items["Missing Tags"].setText(0, f"Missing Tags ({missing_tags})")
         self._task_items["No Artwork"].setText(0, f"No Artwork ({no_artwork})")
 
