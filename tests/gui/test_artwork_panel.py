@@ -93,9 +93,13 @@ def test_set_scanning_disables_buttons(qtbot, tmp_path):
     panel.set_scanning(True)
     assert not panel._scan_btn.isEnabled()
     assert not panel._upload_btn.isEnabled()
+    assert not panel._batch_scan_btn.isEnabled()
+    assert not panel._batch_upload_btn.isEnabled()
     panel.set_scanning(False)
     assert panel._scan_btn.isEnabled()
     assert panel._upload_btn.isEnabled()
+    assert panel._batch_scan_btn.isEnabled()
+    assert panel._batch_upload_btn.isEnabled()
 
 
 def test_batch_upload_emits_all_tracks(qtbot, tmp_path):
