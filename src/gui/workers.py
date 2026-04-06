@@ -11,6 +11,8 @@ from src.core.models import DupeGroup, RenameOperation, TagConflict, Track
 from src.core.organizer import execute_rename_plan
 from src.core.scanner import scan_directories
 from src.core.tagger import COMPLETENESS_FIELDS, read_tags, write_tags
+from src.core.artwork import find_local_artwork, search_cover_art, embed_artwork
+import src.core.artwork as _artwork_mod
 
 logger = logging.getLogger(__name__)
 
@@ -226,3 +228,47 @@ class AnalyzeWorker(QThread):
                 logger.exception("AnalyzeWorker: failed on %s", track.file_path)
             self.progress.emit(i, total)
         self.finished.emit(updated)
+
+
+class ArtworkWorker(QThread):
+    """Scans for artwork (local folder → MusicBrainz) and embeds it immediately.
+
+    Processes tracks sequentially to respect MusicBrainz rate limits.
+    Emits finished(track, success) once per track and done() when all complete.
+    """
+
+    finished = Signal(Track, bool)  # one per track: track, success
+    done = Signal()                 # fires once when all tracks are processed
+    status_message = Signal(str)    # for the main window status bar
+
+    def __init__(self, tracks: list[Track]):
+        super().__init__()
+        self._tracks = tracks
+
+    def run(self) -> None:
+        for track in self._tracks:
+            try:
+                data = find_local_artwork(track.file_path)
+                if data:
+                    embed_artwork(track.file_path, data)
+                    self.finished.emit(track, True)
+                    continue
+
+                if _artwork_mod.musicbrainzngs is None:
+                    self.status_message.emit("MusicBrainz unavailable — artwork not found")
+                    self.finished.emit(track, False)
+                    continue
+
+                data = search_cover_art(track.artist or "", track.album or "")
+                if data:
+                    embed_artwork(track.file_path, data)
+                    self.finished.emit(track, True)
+                else:
+                    self.status_message.emit(
+                        f"No artwork found for {track.artist} — {track.album}"
+                    )
+                    self.finished.emit(track, False)
+            except Exception:
+                logger.exception("ArtworkWorker: failed for %s", track.file_path)
+                self.finished.emit(track, False)
+        self.done.emit()
