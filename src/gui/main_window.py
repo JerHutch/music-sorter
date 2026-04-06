@@ -23,7 +23,8 @@ from src.gui.playlist_manager import PlaylistManager
 from src.gui.rename_preview import RenamePreview
 from src.gui.settings_view import SettingsView
 from src.gui.tag_editor import TagEditor
-from src.gui.workers import AnalyzeWorker, ScanWorker, TagWriteWorker
+from src.gui.workers import AnalyzeWorker, ArtworkWorker, ScanWorker, TagWriteWorker
+from src.core.artwork import embed_artwork, read_artwork
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,7 @@ class MainWindow(QMainWindow):
         self._scan_worker: ScanWorker | None = None
         self._tag_worker: TagWriteWorker | None = None
         self._analyze_worker: AnalyzeWorker | None = None
+        self._artwork_worker: ArtworkWorker | None = None
 
         self._build_ui()
         self._settings_view.load_config(self._config)
@@ -159,6 +161,9 @@ class MainWindow(QMainWindow):
         self._library.batch_edit_requested.connect(self._on_batch_edit)
         # Wire tag editor save
         self._tag_editor.save_requested.connect(self._on_tag_save)
+        # Wire artwork panel
+        self._tag_editor.artwork_panel.scan_requested.connect(self._on_artwork_scan)
+        self._tag_editor.artwork_panel.upload_requested.connect(self._on_artwork_upload)
         # Wire dupe resolver delete
         self._dupe_resolver.delete_requested.connect(self._on_delete_tracks)
         # Wire dupe resolver scan button to use all_tracks
@@ -476,6 +481,32 @@ class MainWindow(QMainWindow):
     def _on_tag_write_finished(self, updated: list) -> None:
         self._status_label.setText(f"Saved tags for {len(updated)} track(s)")
         self._refresh_library()
+
+    def _on_artwork_scan(self, tracks: list[Track]) -> None:
+        panel = self._tag_editor.artwork_panel
+        panel.set_scanning(True)
+        self._artwork_worker = ArtworkWorker(tracks)
+        self._artwork_worker.finished.connect(self._on_artwork_scan_track_done)
+        self._artwork_worker.done.connect(lambda: panel.set_scanning(False))
+        self._artwork_worker.status_message.connect(
+            lambda msg: self.statusBar().showMessage(msg, 5000)
+        )
+        self._artwork_worker.start()
+
+    def _on_artwork_scan_track_done(self, track: Track, success: bool) -> None:
+        if success:
+            data = read_artwork(track.file_path)
+            if data:
+                self._tag_editor.artwork_panel.show_artwork(data)
+
+    def _on_artwork_upload(self, tracks: list[Track], image_bytes: bytes) -> None:
+        for track in tracks:
+            try:
+                embed_artwork(track.file_path, image_bytes)
+            except Exception:
+                logger.exception("Failed to embed uploaded artwork in %s", track.file_path)
+        if len(tracks) == 1:
+            self._tag_editor.artwork_panel.show_artwork(image_bytes)
 
     # ------------------------------------------------------------------
     # Deduplication
