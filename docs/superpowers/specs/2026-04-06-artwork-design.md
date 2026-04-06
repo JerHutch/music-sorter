@@ -47,7 +47,7 @@ To extract embedded art bytes for display, add `read_artwork(path: Path) -> byte
 **Signals:**
 ```python
 scan_requested = Signal(list)    # list[Track] — one track or many (batch)
-upload_requested = Signal(Track, bytes)  # single track + validated image bytes
+upload_requested = Signal(list, bytes)   # list[Track] + validated image bytes (1 or many)
 ```
 
 **Public API:**
@@ -59,7 +59,7 @@ def set_scanning(self, scanning: bool) -> None  # disables buttons during scan
 def show_artwork(self, image_data: bytes) -> None  # update displayed image
 ```
 
-**Batch mode:** Shows "N tracks selected" label and a single "Scan all" button (no image, no Upload). Scan all only targets tracks missing art.
+**Batch mode:** Shows "N tracks selected" label with two buttons: "Scan all" and "Upload to all". Scan all only targets tracks missing art. Upload to all opens the same file dialog/validation flow as single-track upload, then embeds the chosen image into every selected track.
 
 ### `gui/workers.py` — `ArtworkWorker`
 
@@ -90,7 +90,7 @@ Batch scans run tracks sequentially (not parallel) to respect MusicBrainz rate l
 ### `gui/main_window.py` changes
 
 - Connect `self._tag_editor.artwork_panel.scan_requested` → spawn `ArtworkWorker`
-- Connect `self._tag_editor.artwork_panel.upload_requested` → call `embed_artwork` directly, then call `artwork_panel.show_artwork(bytes)`
+- Connect `self._tag_editor.artwork_panel.upload_requested` → call `embed_artwork` on each track in the list, then call `artwork_panel.show_artwork(bytes)` (single-track mode) or refresh count label (batch mode)
 - On `ArtworkWorker.finished(track, True)` → call `artwork_panel.show_artwork(read_artwork(track.file_path))`
 - On `ArtworkWorker.status_message(msg)` → `self.statusBar().showMessage(msg, 5000)`
 
@@ -139,5 +139,6 @@ Performed in `ArtworkPanel._on_upload_clicked()` before emitting `upload_request
 - `test_scan_requested_signal_fires` — click Scan, assert signal emitted with correct track
 - `test_upload_requested_signal_fires` — patch file dialog + QImage load, assert signal emitted
 - `test_set_scanning_disables_buttons` — call `set_scanning(True)`, assert buttons disabled
+- `test_batch_upload_emits_all_tracks` — load 3 tracks via `load_batch`, patch file dialog, assert `upload_requested` emitted with all 3 tracks and image bytes
 
 MusicBrainz network calls are not tested (consistent with existing `search_cover_art` — no live network in tests).
