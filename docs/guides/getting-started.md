@@ -32,15 +32,15 @@ When the scan finishes, the Dashboard updates with collection statistics and the
 A typical session looks like this:
 
 1. **Scan** to pick up any new or changed files.
-2. Check the **Dashboard** for an overview of missing tags, duplicates, and missing artwork.
-3. Use the **Library** browser to find tracks that need attention. The Task Queue in the left sidebar shows actionable queues (Missing Tags, Duplicates, No Artwork, etc.).
+2. Check the **Dashboard** for an overview of missing tags and missing artwork with charts.
+3. Use the **Library** browser to find tracks that need attention. The Task Queue in the left sidebar shows live counts for Missing Tags and No Artwork — click either to filter immediately.
 4. Work through each queue:
-   - Fix tags in the **Tag Editor** (single or batch).
-   - Merge duplicates in the **Duplicate Resolver**.
-   - Import metadata from iTunes via **iTunes Import**.
+   - Fix tags in the **Tag Editor** panel (appears on the right when you select tracks in Library). Works for single tracks or batch selection.
+   - Merge duplicates in **Organize → Duplicates**.
+   - Import metadata from iTunes via **Import**.
    - Fetch missing artwork via the **Artwork** workflow.
-5. When tags are clean, use **Rename/Organize** to restructure files on disk according to your configured patterns.
-6. Generate smart playlists via the **Playlist Manager**.
+5. When tags are clean, use **Organize → Rename / Organize** to restructure files on disk according to your configured patterns.
+6. Generate smart playlists via **Playlists**.
 
 Every operation that modifies files supports a **dry-run preview** before anything is written. All changes are logged to the operation history and can be undone.
 

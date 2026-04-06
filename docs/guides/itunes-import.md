@@ -2,8 +2,6 @@
 
 Music Sorter can import track metadata from an iTunes Music Library XML file. This is a one-time or occasional operation to pull in play counts, custom genre edits, or other metadata you've maintained in iTunes.
 
-> **Note:** The iTunes import UI is currently in progress. The parsing and conflict resolution logic in the core library is complete. This guide describes the full intended workflow.
-
 ## How It Works
 
 1. Music Sorter parses the iTunes XML plist and extracts metadata for each track: title, artist, album artist, album, track number, genre, year, BPM, and file location.
@@ -24,11 +22,10 @@ Music Sorter can import track metadata from an iTunes Music Library XML file. Th
 
 ## Running the Import
 
-1. Go to **Settings** and set the **iTunes XML path** (or enter it directly in the import dialog).
-2. Open the iTunes Import view from the **Import** tab (planned) or the sidebar.
-3. Click **Choose iTunes XML** if not already set, then click **Start Import**.
-4. A progress bar shows parsing and matching status.
-5. When complete, the conflict resolution table appears.
+1. Click **Import** in the top navigation bar to open the iTunes Import view.
+2. Click **Choose iTunes XML** to select your library file (or set it in Settings beforehand — the view will pre-fill the path).
+3. Click **Start Import**. A progress bar shows parsing and matching status.
+4. When complete, the conflict resolution table appears.
 
 ## Resolving Conflicts
 

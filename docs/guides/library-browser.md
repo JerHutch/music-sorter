@@ -28,21 +28,18 @@ The bucket is stored as a custom `MUSIC_SORTER_BUCKET` ID3 TXXX frame and does n
 
 ## Task Queue Filters
 
-The **Task Queue** in the left sidebar shows actionable groups with counts:
+The **Task Queue** in the left sidebar shows actionable groups with live counts updated after each scan:
 
 - **Missing Tags** — tracks below the completeness threshold
-- **Duplicates** — tracks identified as duplicates
 - **No Artwork** — tracks missing embedded album art
-- **Ready to Organize** — tracks whose current path doesn't match their rename pattern
-- **Empty Dirs** — directories that contain no MP3 files
 
-> **Note:** Task Queue live counts and click-to-filter are planned for a future update. Currently the Task Queue shows static placeholder entries.
+Click any Task Queue item to instantly filter the Library to just those tracks. Click a bucket to filter by bucket. Selecting **All Music** clears the filter.
 
 ## Column Configuration
 
 Available columns include: title, artist, album artist, album, track number, disc number, year, genre, BPM, key, bitrate, duration, file path, file size, bucket, tag completeness, tag source, and has artwork.
 
-> **Note:** Right-click to show/hide columns and drag to reorder are planned for a future update. Column visibility and order will be persisted in your configuration file.
+**Right-click any column header** to open the column visibility menu. Check or uncheck columns to show or hide them. Drag column headers to reorder them. Your column choices are saved automatically to your configuration file.
 
 ## Selecting Tracks
 
@@ -51,15 +48,4 @@ Available columns include: title, artist, album artist, album, track number, dis
 - `Shift+click` to select a range.
 - `Ctrl+A` to select all visible tracks.
 
-The status bar shows the number of currently selected tracks.
-
-## Toolbar Actions
-
-The toolbar above the track table applies actions to the selected tracks:
-
-| Action | Description |
-|---|---|
-| Auto-Tag Selected | Look up metadata via AcoustID fingerprint for selected tracks |
-| Batch Edit | Open the tag editor in batch mode for all selected tracks |
-| Analyze | Run BPM and key detection on selected tracks |
-| Organize | Preview and execute the rename/reorganize plan for selected tracks |
+Selecting one or more tracks opens the **Tag Editor** panel on the right side of the Library view. The panel closes automatically when the selection is cleared.

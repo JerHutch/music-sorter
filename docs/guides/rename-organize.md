@@ -2,8 +2,6 @@
 
 Music Sorter can rename files and restructure your folder hierarchy based on tag values and configurable per-bucket patterns. Every operation runs as a dry-run preview before any files are moved.
 
-> **Note:** The rename/organize preview UI is currently in progress. The renaming and organizing logic in the core library is complete. This guide describes the full intended workflow.
-
 ## How It Works
 
 1. You configure a rename pattern per bucket (see [Configuration Reference](configuration.md#rename-patterns)).
@@ -58,12 +56,11 @@ rename_patterns:
 
 ## Using the Rename Preview
 
-1. Select tracks in the Library browser (or select all with `Ctrl+A`).
-2. Click **Organize** in the toolbar.
-3. The pattern editor shows the current pattern for the selected bucket. Edit it and the preview updates live with sample output from a few tracks.
-4. The full dry-run table shows every old path → new path for all selected tracks. Scroll through and look for anything unexpected.
-5. **Collision warnings** (two tracks mapping to the same destination) are highlighted in red. Music Sorter automatically appends a suffix like `(2)` to resolve collisions, but you should review them.
-6. Click **Execute** to run the moves. Progress is shown in the status bar.
+1. Click **Organize** in the top navigation bar, then select the **Rename / Organize** tab.
+2. The pattern editor at the top shows the current rename pattern. Edit it and the live preview beneath it updates immediately, showing sample output from a few tracks.
+3. Click **Generate Preview** to build the full dry-run table: every old path → new path for all tracks. Scroll through and look for anything unexpected.
+4. **Collision warnings** (two tracks mapping to the same destination) are highlighted. Music Sorter automatically appends a suffix like `(2)` to resolve collisions, but you should review them.
+5. Click **Execute** to run the moves. Progress is shown in the status bar.
 
 ## Safety Rules
 

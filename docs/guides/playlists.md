@@ -4,8 +4,6 @@ Music Sorter generates smart playlists by querying your library with filter crit
 
 Output formats: **M3U** and **PLS**.
 
-> **Note:** The playlist manager UI is currently in progress. The playlist generation logic in the core library is complete. This guide describes the full intended workflow.
-
 ## Playlist Definitions
 
 Each playlist is defined by:
@@ -45,33 +43,32 @@ sort_by: bpm
 
 ## Using the Playlist Manager
 
-The Playlist Manager is accessed from the left sidebar under **Saved Playlists**.
+Click **Playlists** in the top navigation bar to open the Playlist Manager. The left panel shows the playlist tree organized into folders; the right panel is the editor for the selected playlist.
 
 ### Creating a Playlist
 
 1. Right-click in the playlist tree → **New Playlist**.
-2. Fill in the name, folder, format, and filter criteria.
-3. Click **Generate** to create the playlist file.
+2. Fill in the name, folder path, format (M3U or PLS), filter criteria, and sort field in the editor panel on the right.
+3. Click **Save** to store the definition.
+4. Click **Generate** to write the playlist file to disk.
 
-The output file is written to the path configured in Settings under the playlist's folder path.
+### Organizing with Folders
 
-### Organizing Playlists
-
-- Right-click a folder to create a subfolder, rename, or delete it.
-- Drag playlists between folders to reorganize them.
+- Click **+ Folder** to add a folder to the tree. Folders are a visual grouping — they persist when a playlist is saved into them.
+- Right-click a playlist or folder to rename or delete it.
 
 ### Regenerating Playlists
 
 After scanning new tracks or editing tags:
 
-- Click **Generate** on an individual playlist to regenerate it.
+- Select a playlist and click **Generate** to regenerate it.
 - Click **Re-generate All** to update every saved playlist at once.
 
 This is useful after importing new music, finishing a deduplication session, or running normalization.
 
 ## Output Location
 
-Playlist files are written to the directory configured in Settings. The folder path in the playlist definition creates subdirectories:
+The **Folder** field on each playlist is the filesystem directory where the file is written. Use an absolute path (e.g. `~/Music/Playlists/DJ/Sets`) or a path relative to your home directory. The directory is created automatically if it doesn't exist.
 
 ```
 ~/Music/Playlists/
@@ -81,5 +78,3 @@ Playlist files are written to the directory configured in Settings. The folder p
 └── General/
     └── Favourites.m3u
 ```
-
-Configure the playlist root directory in Settings.

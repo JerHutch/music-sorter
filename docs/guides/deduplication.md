@@ -2,8 +2,6 @@
 
 Music Sorter uses a two-pass algorithm to find duplicate tracks without requiring identical filenames or tags. All duplicates are staged for your review before any files are deleted.
 
-> **Note:** The duplicate resolver UI is currently in progress. The detection and merge logic in the core library is complete. This guide describes the full intended workflow.
-
 ## How Duplicate Detection Works
 
 **Pass 1 — Duration filter:** Tracks are grouped by audio duration within a 2-second tolerance. Only groups with 2 or more tracks proceed to the next pass. This makes the expensive fingerprint comparison step feasible on large libraries.
@@ -17,34 +15,36 @@ This approach finds duplicates even when:
 
 ## Running Duplicate Detection
 
-1. Open the **Library** browser.
-2. Click **Duplicates** in the Task Queue sidebar to see tracks flagged as duplicates.
-3. Click **Resolve Duplicates** to open the Duplicate Resolver view.
+1. Click **Organize** in the top navigation bar.
+2. Select the **Duplicates** tab.
+3. Click **Find Duplicates** to start the scan.
 
-Note: fingerprints must be generated before duplicates can be detected. If you haven't fingerprinted your library yet, run **Analyze** on your tracks first or wait for the background analysis to complete after scanning.
+A progress indicator appears during scanning. When complete, duplicate groups are displayed in the tree.
+
+> Fingerprints must be generated before duplicates can be detected. If you haven't fingerprinted your library yet, run **Analyze** on your tracks first.
 
 ## Reviewing Duplicate Groups
 
-The Duplicate Resolver shows a table of duplicate groups. Each group can be expanded to show all copies with:
+The Duplicate Resolver shows a tree of duplicate groups. Expand each group to see its copies, each with:
 
-- File path and size
+- File path
 - Bitrate
-- Tag differences highlighted between copies
+- Tag completeness score
+- Per-track action dropdown: **Keep**, **Delete**, or **Delete (auto)**
 
-**Auto-recommendation:** For each group, Music Sorter automatically selects the best copy to keep based on:
+**Auto-recommendation:** For each group, Music Sorter automatically sets the best copy to Keep and the rest to Delete (auto) based on:
 1. Highest bitrate (primary criterion)
 2. Highest tag completeness (tiebreaker)
 
-## Resolving a Group
+## Resolving Groups
 
-For each duplicate group you can:
+For each duplicate group:
 
-- **Accept auto-recommendation** — keep the suggested copy, merge tags from other copies, move inferior copies to the trash directory.
-- **Override the keeper** — click a different copy to designate it as the one to keep.
-- **Resolve tag conflicts** — when two copies have different non-empty values for the same field, a dropdown lets you choose which value to use.
-- **Skip** — leave this group unresolved for now.
+- **Accept the auto-recommendation** as-is (the best copy is already set to Keep).
+- **Override the keeper** — change a copy's action dropdown to Keep. There should be exactly one Keep per group.
+- **Click Auto-Resolve All** to apply the auto-recommendation to every group at once.
 
-After reviewing, click **Process Selected** or **Process All (Auto)** to execute your decisions.
+When ready, click **Delete Selected** to remove the duplicates marked for deletion from the library.
 
 ## Tag Merging
 
@@ -54,11 +54,9 @@ When keeping one copy and discarding others, tags are merged using these rules:
 - Higher-quality source wins (iTunes > MusicBrainz > filename-parsed > existing file tag)
 - True conflicts (two different non-empty values) are flagged for manual choice
 
-## Trash, Not Delete
+## What Deletion Does
 
-Inferior copies are **moved to a trash directory**, not permanently deleted. You can review the trash and empty it manually when you're confident the right copies were kept. The trash location is configured in Settings.
-
-All deletions are logged to the operation history and can be undone until the trash is emptied.
+Deleting a duplicate removes it from the Music Sorter library database. The operation is logged to the operation history.
 
 ## Configuration
 
