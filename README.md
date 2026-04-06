@@ -25,14 +25,14 @@ A desktop application for organizing, tagging, deduplicating, and restructuring 
 | Smart playlist generation (M3U/PLS) | Implemented |
 | Album artwork fetch and embed (MusicBrainz) | Implemented |
 | Operation history and undo | Implemented |
-| Tag editor UI (single and batch) | In progress |
-| Duplicate resolver UI | In progress |
-| iTunes import UI | In progress |
-| Rename/organize preview UI | In progress |
-| Statistics charts view | In progress |
-| Playlist manager UI | In progress |
-| Sidebar live counts and filtering | In progress |
-| Configurable column visibility and order | In progress |
+| Tag editor UI (single and batch) | Implemented |
+| Duplicate resolver UI | Implemented |
+| iTunes import UI | Implemented |
+| Rename/organize preview UI | Implemented |
+| Statistics charts view | Implemented |
+| Playlist manager UI | Implemented |
+| Sidebar live counts and filtering | Implemented |
+| Configurable column visibility and order | Implemented |
 
 ## Requirements
 
@@ -91,7 +91,7 @@ pytest --cov=src --cov-report=term-missing
 pytest tests/core/test_tagger.py
 ```
 
-The core library (`src/core/`) has no Qt dependency and can be tested without a display. GUI tests require a running display or a virtual framebuffer (e.g. `Xvfb`).
+The core library (`src/core/`) has no Qt dependency and can be tested without a display. GUI tests use `pytest-qt` and require a running display or a virtual framebuffer (e.g. `Xvfb`).
 
 ## Configuration
 
@@ -135,4 +135,5 @@ The core/GUI separation means all core logic is testable without a display. See 
 - **Metadata lookup:** musicbrainzngs
 - **Database:** SQLite (stdlib)
 - **Configuration:** PyYAML
-- **Tests:** pytest + pytest-cov
+- **Charts:** PySide6.QtCharts (bundled with PySide6)
+- **Tests:** pytest + pytest-cov + pytest-qt
