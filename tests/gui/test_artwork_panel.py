@@ -27,9 +27,10 @@ def test_load_track_with_artwork_shows_image(qtbot, tmp_path):
     panel = ArtworkPanel()
     qtbot.addWidget(panel)
     track = _make_track(tmp_path)
-    with patch("src.gui.artwork_panel.read_artwork", return_value=_PNG_1X1):
-        panel.load_track(track)
-    assert not panel._image_label.isHidden()
+    mock = patch("src.gui.artwork_panel.read_artwork", return_value=_PNG_1X1).start()
+    panel.load_track(track)
+    qtbot.waitUntil(lambda: not panel._image_label.isHidden(), timeout=2000)
+    mock.stop()
     assert not panel._placeholder_label.isVisible()
 
 
@@ -37,8 +38,8 @@ def test_load_track_without_artwork_shows_placeholder(qtbot, tmp_path):
     panel = ArtworkPanel()
     qtbot.addWidget(panel)
     track = _make_track(tmp_path)
-    with patch("src.gui.artwork_panel.read_artwork", return_value=None):
-        panel.load_track(track)
+    panel.load_track(track)
+    # Placeholder is shown synchronously at the start of load_track
     assert not panel._image_label.isVisible()
     assert not panel._placeholder_label.isHidden()
 
@@ -57,8 +58,7 @@ def test_scan_requested_signal_fires(qtbot, tmp_path):
     panel = ArtworkPanel()
     qtbot.addWidget(panel)
     track = _make_track(tmp_path)
-    with patch("src.gui.artwork_panel.read_artwork", return_value=None):
-        panel.load_track(track)
+    panel.load_track(track)
     captured = []
     panel.scan_requested.connect(lambda tracks: captured.append(tracks))
     panel._scan_btn.click()
@@ -72,8 +72,7 @@ def test_upload_requested_signal_fires(qtbot, tmp_path):
     # Write a real PNG to disk so QImage can load it
     img_file = tmp_path / "cover.png"
     img_file.write_bytes(_PNG_1X1)
-    with patch("src.gui.artwork_panel.read_artwork", return_value=None):
-        panel.load_track(track)
+    panel.load_track(track)
     captured = []
     panel.upload_requested.connect(lambda tracks, data: captured.append((tracks, data)))
     with patch("src.gui.artwork_panel.QFileDialog.getOpenFileName",
@@ -88,8 +87,7 @@ def test_set_scanning_disables_buttons(qtbot, tmp_path):
     panel = ArtworkPanel()
     qtbot.addWidget(panel)
     track = _make_track(tmp_path)
-    with patch("src.gui.artwork_panel.read_artwork", return_value=None):
-        panel.load_track(track)
+    panel.load_track(track)
     panel.set_scanning(True)
     assert not panel._scan_btn.isEnabled()
     assert not panel._upload_btn.isEnabled()
@@ -107,8 +105,7 @@ def test_is_current_track(qtbot, tmp_path):
     qtbot.addWidget(panel)
     t1 = _make_track(tmp_path, "A")
     t2 = _make_track(tmp_path, "B")
-    with patch("src.gui.artwork_panel.read_artwork", return_value=None):
-        panel.load_track(t1)
+    panel.load_track(t1)
     assert panel.is_current_track(t1)
     assert not panel.is_current_track(t2)
 

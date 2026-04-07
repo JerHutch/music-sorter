@@ -81,9 +81,18 @@ def search_cover_art(artist: str, album: str) -> bytes | None:
         if not releases:
             logger.warning("No MusicBrainz releases found for: %s — %s", artist, album)
             return None
-        image = musicbrainzngs.get_image_front(releases[0]["id"])
-        logger.info("Artwork found for: %s — %s", artist, album)
-        return image
+        for release in releases:
+            try:
+                image = musicbrainzngs.get_image_front(release["id"])
+                logger.info("Artwork found for: %s — %s", artist, album)
+                return image
+            except musicbrainzngs.ResponseError as exc:
+                if "404" in str(exc):
+                    logger.debug("No CAA art for release %s, trying next", release["id"])
+                    continue
+                raise
+        logger.warning("No CAA artwork found for any release: %s — %s", artist, album)
+        return None
     except Exception:
         logger.error("MusicBrainz lookup failed for: %s — %s", artist, album, exc_info=True)
         return None

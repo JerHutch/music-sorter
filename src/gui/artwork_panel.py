@@ -1,10 +1,11 @@
 from __future__ import annotations
+import threading
 from pathlib import Path
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFileDialog,
 )
-from PySide6.QtCore import Qt, Signal, QBuffer, QIODevice
+from PySide6.QtCore import Qt, Signal, QBuffer, QIODevice, QEvent, QCoreApplication
 from PySide6.QtGui import QPixmap, QImage
 
 from src.core.artwork import read_artwork
@@ -16,6 +17,22 @@ logger = logging.getLogger(__name__)
 _MAX_DISPLAY_PX = 200
 _MAX_DIMENSION_PX = 3000
 _MAX_FILE_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
+class _ArtworkReadEvent(QEvent):
+    """Custom event posted from background thread to deliver artwork bytes safely."""
+    _type: QEvent.Type | None = None
+
+    @classmethod
+    def event_type(cls) -> QEvent.Type:
+        if cls._type is None:
+            cls._type = QEvent.Type(QEvent.registerEventType())
+        return cls._type
+
+    def __init__(self, track: Track, data: bytes) -> None:
+        super().__init__(self.event_type())
+        self.track = track
+        self.data = data
 
 
 class ArtworkPanel(QWidget):
@@ -36,11 +53,13 @@ class ArtworkPanel(QWidget):
         self._set_batch_mode(False)
         self._status_label.setText("")
         self._warning_label.setVisible(False)
-        data = read_artwork(track.file_path)
-        if data:
-            self.show_artwork(data)
-        else:
-            self._show_placeholder()
+        self._show_placeholder()
+        # Read artwork off the main thread — network mounts can block for seconds.
+        # QCoreApplication.postEvent is thread-safe; pending events are dropped if
+        # the panel is destroyed before the event is processed.
+        threading.Thread(
+            target=self._read_artwork_bg, args=(track,), daemon=True
+        ).start()
 
     def load_batch(self, tracks: list[Track]) -> None:
         self._tracks = tracks
@@ -86,6 +105,14 @@ class ArtworkPanel(QWidget):
     def is_current_track(self, track: Track) -> bool:
         """Return True if track is among the currently loaded tracks."""
         return track in self._tracks
+
+    def event(self, event: QEvent) -> bool:
+        if event.type() == _ArtworkReadEvent.event_type():
+            evt: _ArtworkReadEvent = event  # type: ignore[assignment]
+            if evt.track in self._tracks and evt.data:
+                self.show_artwork(evt.data)
+            return True
+        return super().event(event)
 
     # ------------------------------------------------------------------
     # UI construction
@@ -162,6 +189,11 @@ class ArtworkPanel(QWidget):
     # ------------------------------------------------------------------
     # Private helpers
     # ------------------------------------------------------------------
+
+    def _read_artwork_bg(self, track: Track) -> None:
+        """Background thread: read artwork and post result back via event."""
+        data = read_artwork(track.file_path)
+        QCoreApplication.postEvent(self, _ArtworkReadEvent(track, data or b""))
 
     def _show_placeholder(self) -> None:
         self._image_label.setVisible(False)

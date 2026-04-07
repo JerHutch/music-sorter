@@ -491,14 +491,11 @@ class MainWindow(QMainWindow):
         )
         self._artwork_worker.start()
 
-    def _on_artwork_scan_track_done(self, track: Track, success: bool) -> None:
-        if success:
+    def _on_artwork_scan_track_done(self, track: object, success: bool, image_data: bytes) -> None:
+        if success and image_data:
             panel = self._tag_editor.artwork_panel
-            if not panel.is_current_track(track):
-                return
-            data = read_artwork(track.file_path)
-            if data:
-                panel.show_artwork(data)
+            if panel.is_current_track(track):
+                panel.show_artwork(image_data)
 
     def _on_artwork_upload(self, tracks: list[Track], image_bytes: bytes) -> None:
         for track in tracks:

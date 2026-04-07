@@ -237,9 +237,9 @@ class ArtworkWorker(QThread):
     Emits finished(track, success) once per track and done() when all complete.
     """
 
-    finished = Signal(Track, bool)  # one per track: track, success
-    done = Signal()                 # fires once when all tracks are processed
-    status_message = Signal(str)    # for the main window status bar
+    finished = Signal(object, bool, bytes)  # track, success, image_data (b"" on failure)
+    done = Signal()                         # fires once when all tracks are processed
+    status_message = Signal(str)            # for the main window status bar
 
     def __init__(self, tracks: list[Track]):
         super().__init__()
@@ -251,24 +251,24 @@ class ArtworkWorker(QThread):
                 data = find_local_artwork(track.file_path)
                 if data:
                     embed_artwork(track.file_path, data)
-                    self.finished.emit(track, True)
+                    self.finished.emit(track, True, data)
                     continue
 
                 if _artwork_mod.musicbrainzngs is None:
                     self.status_message.emit("MusicBrainz unavailable — artwork not found")
-                    self.finished.emit(track, False)
+                    self.finished.emit(track, False, b"")
                     continue
 
                 data = search_cover_art(track.artist or "", track.album or "")
                 if data:
                     embed_artwork(track.file_path, data)
-                    self.finished.emit(track, True)
+                    self.finished.emit(track, True, data)
                 else:
                     self.status_message.emit(
                         f"No artwork found for {track.artist} — {track.album}"
                     )
-                    self.finished.emit(track, False)
+                    self.finished.emit(track, False, b"")
             except Exception:
                 logger.exception("ArtworkWorker: failed for %s", track.file_path)
-                self.finished.emit(track, False)
+                self.finished.emit(track, False, b"")
         self.done.emit()
