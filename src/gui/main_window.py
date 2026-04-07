@@ -470,12 +470,22 @@ class MainWindow(QMainWindow):
         self._tag_worker.error.connect(
             lambda msg: self._status_label.setText(f"Tag write error: {msg}")
         )
+        if len(tracks) > 1:
+            self._progress_bar.setRange(0, len(tracks))
+            self._progress_bar.setValue(0)
+            self._progress_bar.setVisible(True)
+            self._tag_worker.progress.connect(self._on_tag_write_progress)
         self._tag_worker.start()
         self._status_label.setText(f"Writing tags for {len(tracks)} track(s)…")
 
     def _on_tag_write_finished(self, updated: list) -> None:
+        self._progress_bar.setVisible(False)
         self._status_label.setText(f"Saved tags for {len(updated)} track(s)")
         self._refresh_library()
+
+    def _on_tag_write_progress(self, completed: int, total: int) -> None:
+        self._progress_bar.setRange(0, total)
+        self._progress_bar.setValue(completed)
 
     def _on_artwork_scan(self, tracks: list[Track]) -> None:
         if self._artwork_worker and self._artwork_worker.isRunning():
