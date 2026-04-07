@@ -102,3 +102,54 @@ def test_sidebar_shows_uncategorized_for_untagged_tracks(qtbot):
         qtbot.addWidget(win)
 
     assert "Uncategorized" in win._bucket_items
+
+
+def test_batch_artwork_scan_shows_progress_bar(qtbot):
+    from pathlib import Path
+    from src.core.models import Track
+    mock_config, mock_db = _make_mock_env()
+    with patch("src.gui.main_window.Database") as MockDB, \
+         patch("src.gui.main_window.Config.load_user_config") as mock_cfg:
+        mock_cfg.return_value = mock_config
+        MockDB.return_value = mock_db
+        from src.gui.main_window import MainWindow
+        win = MainWindow()
+        qtbot.addWidget(win)
+        win.show()
+
+    tracks = [
+        Track(file_path=Path(f"/tmp/{i}.mp3"), file_size=1000, bitrate=320, duration=200.0)
+        for i in range(2)
+    ]
+    with patch("src.gui.main_window.ArtworkWorker") as MockWorker:
+        mock_instance = MagicMock()
+        MockWorker.return_value = mock_instance
+        win._on_artwork_scan(tracks)
+
+    assert win._progress_bar.isVisible()
+    assert win._progress_bar.maximum() == 2
+    assert win._progress_bar.value() == 0
+
+
+def test_single_artwork_scan_does_not_show_progress_bar(qtbot):
+    from pathlib import Path
+    from src.core.models import Track
+    mock_config, mock_db = _make_mock_env()
+    with patch("src.gui.main_window.Database") as MockDB, \
+         patch("src.gui.main_window.Config.load_user_config") as mock_cfg:
+        mock_cfg.return_value = mock_config
+        MockDB.return_value = mock_db
+        from src.gui.main_window import MainWindow
+        win = MainWindow()
+        qtbot.addWidget(win)
+        win.show()
+
+    tracks = [
+        Track(file_path=Path("/tmp/a.mp3"), file_size=1000, bitrate=320, duration=200.0)
+    ]
+    with patch("src.gui.main_window.ArtworkWorker") as MockWorker:
+        mock_instance = MagicMock()
+        MockWorker.return_value = mock_instance
+        win._on_artwork_scan(tracks)
+
+    assert not win._progress_bar.isVisible()

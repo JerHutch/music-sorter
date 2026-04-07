@@ -489,6 +489,12 @@ class MainWindow(QMainWindow):
         self._artwork_worker.status_message.connect(
             lambda msg: self.statusBar().showMessage(msg, 5000)
         )
+        if len(tracks) > 1:
+            self._progress_bar.setRange(0, len(tracks))
+            self._progress_bar.setValue(0)
+            self._progress_bar.setVisible(True)
+            self._artwork_worker.progress.connect(self._on_artwork_progress)
+            self._artwork_worker.done.connect(lambda: self._progress_bar.setVisible(False))
         self._artwork_worker.start()
 
     def _on_artwork_scan_track_done(self, track: object, success: bool, image_data: bytes) -> None:
@@ -496,6 +502,10 @@ class MainWindow(QMainWindow):
             panel = self._tag_editor.artwork_panel
             if panel.is_current_track(track):
                 panel.show_artwork(image_data)
+
+    def _on_artwork_progress(self, completed: int, total: int) -> None:
+        self._progress_bar.setRange(0, total)
+        self._progress_bar.setValue(completed)
 
     def _on_artwork_upload(self, tracks: list[Track], image_bytes: bytes) -> None:
         for track in tracks:
