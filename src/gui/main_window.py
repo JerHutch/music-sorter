@@ -475,8 +475,8 @@ class MainWindow(QMainWindow):
             self._progress_bar.setValue(0)
             self._progress_bar.setVisible(True)
             self._tag_worker.progress.connect(self._on_tag_write_progress)
-        self._tag_worker.start()
         self._status_label.setText(f"Writing tags for {len(tracks)} track(s)…")
+        self._tag_worker.start()
 
     def _on_tag_write_finished(self, updated: list) -> None:
         self._progress_bar.setVisible(False)
