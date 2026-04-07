@@ -248,7 +248,7 @@ class ArtworkWorker(QThread):
 
     def run(self) -> None:
         total = len(self._tracks)
-        for i, track in enumerate(self._tracks):
+        for i, track in enumerate(self._tracks, 1):
             try:
                 data = find_local_artwork(track.file_path)
                 if data:
@@ -270,5 +270,5 @@ class ArtworkWorker(QThread):
             except Exception:
                 logger.exception("ArtworkWorker: failed for %s", track.file_path)
                 self.finished.emit(track, False, b"")
-            self.progress.emit(i + 1, total)
+            self.progress.emit(i, total)
         self.done.emit()
