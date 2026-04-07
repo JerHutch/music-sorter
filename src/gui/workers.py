@@ -234,41 +234,41 @@ class ArtworkWorker(QThread):
     """Scans for artwork (local folder → MusicBrainz) and embeds it immediately.
 
     Processes tracks sequentially to respect MusicBrainz rate limits.
-    Emits finished(track, success) once per track and done() when all complete.
+    Emits finished(track, success, image_data) once per track and done() when all complete.
     """
 
     finished = Signal(object, bool, bytes)  # track, success, image_data (b"" on failure)
     done = Signal()                         # fires once when all tracks are processed
     status_message = Signal(str)            # for the main window status bar
+    progress = Signal(int, int)             # completed, total
 
     def __init__(self, tracks: list[Track]):
         super().__init__()
         self._tracks = tracks
 
     def run(self) -> None:
-        for track in self._tracks:
+        total = len(self._tracks)
+        for i, track in enumerate(self._tracks):
             try:
                 data = find_local_artwork(track.file_path)
                 if data:
                     embed_artwork(track.file_path, data)
                     self.finished.emit(track, True, data)
-                    continue
-
-                if _artwork_mod.musicbrainzngs is None:
+                elif _artwork_mod.musicbrainzngs is None:
                     self.status_message.emit("MusicBrainz unavailable — artwork not found")
                     self.finished.emit(track, False, b"")
-                    continue
-
-                data = search_cover_art(track.artist or "", track.album or "")
-                if data:
-                    embed_artwork(track.file_path, data)
-                    self.finished.emit(track, True, data)
                 else:
-                    self.status_message.emit(
-                        f"No artwork found for {track.artist} — {track.album}"
-                    )
-                    self.finished.emit(track, False, b"")
+                    data = search_cover_art(track.artist or "", track.album or "")
+                    if data:
+                        embed_artwork(track.file_path, data)
+                        self.finished.emit(track, True, data)
+                    else:
+                        self.status_message.emit(
+                            f"No artwork found for {track.artist} — {track.album}"
+                        )
+                        self.finished.emit(track, False, b"")
             except Exception:
                 logger.exception("ArtworkWorker: failed for %s", track.file_path)
                 self.finished.emit(track, False, b"")
+            self.progress.emit(i + 1, total)
         self.done.emit()

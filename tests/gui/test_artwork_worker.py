@@ -90,3 +90,15 @@ def test_artwork_worker_processes_multiple_tracks(qtbot, tmp_path):
             worker.start()
     assert len(results) == 3
     assert all(ok for _, ok, _ in results)
+
+
+def test_artwork_worker_emits_progress_for_multiple_tracks(qtbot, tmp_path):
+    tracks = [_make_track(tmp_path, f"T{i}") for i in range(3)]
+    worker = ArtworkWorker(tracks)
+    progress_calls = []
+    worker.progress.connect(lambda c, t: progress_calls.append((c, t)))
+    with patch("src.gui.workers.find_local_artwork", return_value=_PNG_1X1), \
+         patch("src.gui.workers.embed_artwork"):
+        with qtbot.waitSignal(worker.done, timeout=5000):
+            worker.start()
+    assert progress_calls == [(1, 3), (2, 3), (3, 3)]
