@@ -204,3 +204,65 @@ def test_single_tag_write_does_not_show_progress_bar(qtbot):
         win._on_tag_save(tracks, {"title": "New Title"})
 
     assert not win._progress_bar.isVisible()
+
+
+def test_batch_artwork_scan_hides_progress_bar_on_done(qtbot):
+    from pathlib import Path
+    from src.core.models import Track
+    mock_config, mock_db = _make_mock_env()
+    with patch("src.gui.main_window.Database") as MockDB, \
+         patch("src.gui.main_window.Config.load_user_config") as mock_cfg:
+        mock_cfg.return_value = mock_config
+        MockDB.return_value = mock_db
+        from src.gui.main_window import MainWindow
+        win = MainWindow()
+        qtbot.addWidget(win)
+        win.show()
+
+    tracks = [
+        Track(file_path=Path(f"/tmp/{i}.mp3"), file_size=1000, bitrate=320, duration=200.0)
+        for i in range(2)
+    ]
+    with patch("src.gui.main_window.ArtworkWorker") as MockWorker:
+        mock_instance = MagicMock()
+        MockWorker.return_value = mock_instance
+        win._on_artwork_scan(tracks)
+
+    assert win._progress_bar.isVisible()
+
+    # Simulate ArtworkWorker.done firing — last done.connect call is the hide lambda
+    hide_fn = mock_instance.done.connect.call_args_list[-1][0][0]
+    hide_fn()
+
+    assert not win._progress_bar.isVisible()
+
+
+def test_batch_tag_write_hides_progress_bar_on_finished(qtbot):
+    from pathlib import Path
+    from src.core.models import Track
+    mock_config, mock_db = _make_mock_env()
+    with patch("src.gui.main_window.Database") as MockDB, \
+         patch("src.gui.main_window.Config.load_user_config") as mock_cfg:
+        mock_cfg.return_value = mock_config
+        MockDB.return_value = mock_db
+        from src.gui.main_window import MainWindow
+        win = MainWindow()
+        qtbot.addWidget(win)
+        win.show()
+
+    tracks = [
+        Track(file_path=Path(f"/tmp/{i}.mp3"), file_size=1000, bitrate=320, duration=200.0)
+        for i in range(2)
+    ]
+    with patch("src.gui.main_window.TagWriteWorker") as MockWorker:
+        mock_instance = MagicMock()
+        MockWorker.return_value = mock_instance
+        win._on_tag_save(tracks, {"title": "New Title"})
+
+    assert win._progress_bar.isVisible()
+
+    # Simulate TagWriteWorker.finished firing — last finished.connect call is the hide lambda
+    hide_fn = mock_instance.finished.connect.call_args_list[-1][0][0]
+    hide_fn([])
+
+    assert not win._progress_bar.isVisible()
