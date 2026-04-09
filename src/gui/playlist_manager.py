@@ -11,7 +11,26 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, Signal
 
 from src.core.models import PlaylistDefinition, Track
-from src.core.playlist import filter_tracks_for_playlist, generate_m3u, generate_pls
+from src.core.playlist import generate_m3u, generate_pls
+
+
+def filter_tracks_for_playlist(tracks, playlist):
+    """Legacy shim — will be removed in Task 4 when PlaylistManager is rewritten."""
+    result = list(tracks)
+    for field, value in playlist.filters.items():
+        if isinstance(value, dict):
+            min_val, max_val = value.get("min"), value.get("max")
+            result = [t for t in result if getattr(t, field, None) is not None
+                      and (min_val is None or getattr(t, field) >= min_val)
+                      and (max_val is None or getattr(t, field) <= max_val)]
+        elif isinstance(value, list):
+            result = [t for t in result if getattr(t, field, None) in value]
+        else:
+            result = [t for t in result if getattr(t, field, None) == value]
+    if playlist.sort_by:
+        result.sort(key=lambda t: (getattr(t, playlist.sort_by, None) is None,
+                                   getattr(t, playlist.sort_by, 0)))
+    return result
 
 import logging
 logger = logging.getLogger(__name__)
