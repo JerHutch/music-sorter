@@ -67,21 +67,25 @@ OPERATOR_LABELS: dict[str, str] = {
 # Operator evaluation
 # ---------------------------------------------------------------------------
 
-def _apply_operator(field_val, operator: str, value) -> bool:
+def _apply_operator(field_val, operator: str, value, field_def: FieldDef | None = None) -> bool:
     if operator == "contains":
         return str(value).lower() in str(field_val).lower()
     if operator == "does_not_contain":
         return str(value).lower() not in str(field_val).lower()
     if operator == "is":
-        try:
-            return float(field_val) == float(value)
-        except (TypeError, ValueError):
-            return str(field_val) == str(value)
+        if field_def and field_def.type in ("number", "date"):
+            try:
+                return float(field_val) == float(value)
+            except (TypeError, ValueError):
+                return False
+        return str(field_val) == str(value)
     if operator == "is_not":
-        try:
-            return float(field_val) != float(value)
-        except (TypeError, ValueError):
-            return str(field_val) != str(value)
+        if field_def and field_def.type in ("number", "date"):
+            try:
+                return float(field_val) != float(value)
+            except (TypeError, ValueError):
+                return True
+        return str(field_val) != str(value)
     if operator == "starts_with":
         return str(field_val).lower().startswith(str(value).lower())
     if operator == "ends_with":
@@ -123,8 +127,11 @@ def evaluate_rule(rule: SimpleRule | RuleGroup, track: Track) -> bool:
     # SimpleRule
     field_val = getattr(track, rule.field, None)
     if field_val is None:
+        if rule.operator in ("is_not", "does_not_contain"):
+            return True
         return False
-    return _apply_operator(field_val, rule.operator, rule.value)
+    field_def = FIELD_REGISTRY.get(rule.field)
+    return _apply_operator(field_val, rule.operator, rule.value, field_def)
 
 
 def _evaluate_top(playlist: SmartPlaylist, track: Track) -> bool:
@@ -134,13 +141,22 @@ def _evaluate_top(playlist: SmartPlaylist, track: Track) -> bool:
     return all(results) if playlist.conjunction == "AND" else any(results)
 
 
+def _sort_key(val):
+    """Return a sort key that places None last and keeps types comparable."""
+    if val is None:
+        return (1, "")
+    if isinstance(val, (int, float)):
+        return (0, val)
+    return (0, str(val))
+
+
 def _apply_limit(tracks: list[Track], count: int, order: str | None) -> list[Track]:
     if order == "random":
         return _random.sample(tracks, min(count, len(tracks)))
     if order:
         tracks = sorted(
             tracks,
-            key=lambda t: (getattr(t, order) is None, getattr(t, order, None) or 0),
+            key=lambda t: _sort_key(getattr(t, order, None)),
         )
     return tracks[:count]
 
@@ -150,10 +166,7 @@ def evaluate_playlist(playlist: SmartPlaylist, tracks: list[Track]) -> list[Trac
     matching = [t for t in tracks if _evaluate_top(playlist, t)]
     if playlist.sort_by:
         matching.sort(
-            key=lambda t: (
-                getattr(t, playlist.sort_by) is None,
-                getattr(t, playlist.sort_by, None) or 0,
-            )
+            key=lambda t: _sort_key(getattr(t, playlist.sort_by, None))
         )
     if playlist.limit_count:
         matching = _apply_limit(matching, playlist.limit_count, playlist.limit_order)

@@ -236,6 +236,30 @@ def test_none_bpm_returns_false():
     assert evaluate_rule(rule, _track(bpm=None)) is False
 
 
+def test_none_field_is_not_returns_true():
+    # A track with no genre satisfies "genre is not Jazz"
+    rule = SimpleRule(field="genre", operator="is_not", value="Jazz")
+    assert evaluate_rule(rule, _track(genre=None)) is True
+
+
+def test_none_field_does_not_contain_returns_true():
+    # A track with no genre satisfies "genre does not contain Jazz"
+    rule = SimpleRule(field="genre", operator="does_not_contain", value="Jazz")
+    assert evaluate_rule(rule, _track(genre=None)) is True
+
+
+def test_string_is_uses_string_comparison():
+    # "genre" is a string field — "is" should use string comparison, not float
+    rule = SimpleRule(field="genre", operator="is", value="2020")
+    assert evaluate_rule(rule, _track(genre="2020")) is True
+    assert evaluate_rule(rule, _track(genre="2020.0")) is False  # "2020.0" != "2020" as strings
+
+
+def test_number_is_uses_numeric_comparison():
+    rule = SimpleRule(field="year", operator="is", value=2020)
+    assert evaluate_rule(rule, _track(year=2020)) is True
+
+
 # ---------------------------------------------------------------------------
 # RuleGroup
 # ---------------------------------------------------------------------------
