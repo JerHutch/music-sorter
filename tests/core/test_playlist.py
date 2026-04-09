@@ -9,6 +9,7 @@ from src.core.models import SimpleRule, RuleGroup, SmartPlaylist, Track
 from src.core.playlist import (
     FIELD_REGISTRY,
     OPERATORS_BY_TYPE,
+    OPERATOR_LABELS,
     evaluate_rule,
     evaluate_playlist,
     generate_m3u,
@@ -74,6 +75,13 @@ def test_field_registry_contains_expected_fields():
 def test_operators_by_type_keys():
     for t in ("string", "number", "boolean", "date"):
         assert t in OPERATORS_BY_TYPE
+
+
+def test_operator_labels_covers_all_operators():
+    all_ops = {op for ops in OPERATORS_BY_TYPE.values() for op in ops}
+    for op in all_ops:
+        assert op in OPERATOR_LABELS, f"Missing label for operator: {op}"
+        assert isinstance(OPERATOR_LABELS[op], str)
 
 
 # ---------------------------------------------------------------------------
