@@ -4,10 +4,11 @@ from __future__ import annotations
 import json
 import sqlite3
 import threading
+import time
 from pathlib import Path
 from typing import Any
 
-from src.core.models import Track, PlaylistDefinition
+from src.core.models import Track, PlaylistDefinition, SimpleRule, RuleGroup, SmartPlaylist
 
 import logging
 logger = logging.getLogger(__name__)
@@ -34,7 +35,8 @@ CREATE TABLE IF NOT EXISTS tracks (
     tag_completeness REAL NOT NULL DEFAULT 0.0,
     tag_source     TEXT,
     has_artwork    INTEGER NOT NULL DEFAULT 0,
-    file_mtime     REAL NOT NULL DEFAULT 0.0
+    file_mtime     REAL NOT NULL DEFAULT 0.0,
+    date_added     REAL
 )
 """
 
@@ -75,6 +77,21 @@ CREATE TABLE IF NOT EXISTS playlists (
 )
 """
 
+_CREATE_SMART_PLAYLISTS = """
+CREATE TABLE IF NOT EXISTS smart_playlists (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT NOT NULL UNIQUE,
+    folder          TEXT,
+    format          TEXT NOT NULL DEFAULT 'm3u',
+    conjunction     TEXT NOT NULL DEFAULT 'AND',
+    rules           TEXT NOT NULL DEFAULT '[]',
+    limit_count     INTEGER,
+    limit_order     TEXT,
+    sort_by         TEXT,
+    show_in_sidebar INTEGER NOT NULL DEFAULT 1
+)
+"""
+
 
 def _row_to_track(row: sqlite3.Row) -> Track:
     return Track(
@@ -97,7 +114,29 @@ def _row_to_track(row: sqlite3.Row) -> Track:
         tag_completeness=row["tag_completeness"],
         tag_source=row["tag_source"],
         has_artwork=bool(row["has_artwork"]),
+        date_added=row["date_added"],
     )
+
+
+def _serialize_rule(rule) -> dict:
+    if isinstance(rule, SimpleRule):
+        return {"type": "simple", "field": rule.field,
+                "operator": rule.operator, "value": rule.value}
+    if isinstance(rule, RuleGroup):
+        return {"type": "group", "conjunction": rule.conjunction,
+                "rules": [_serialize_rule(r) for r in rule.rules]}
+    raise ValueError(f"Unknown rule type: {type(rule)}")
+
+
+def _deserialize_rule(d: dict):
+    if d["type"] == "simple":
+        return SimpleRule(field=d["field"], operator=d["operator"], value=d["value"])
+    if d["type"] == "group":
+        return RuleGroup(
+            conjunction=d["conjunction"],
+            rules=[_deserialize_rule(r) for r in d["rules"]],
+        )
+    raise ValueError(f"Unknown rule type in JSON: {d['type']}")
 
 
 class Database:
@@ -116,7 +155,14 @@ class Database:
         cur = self._conn
         cur.execute(_CREATE_TRACKS)
         cur.execute(_CREATE_HISTORY)
-        cur.execute(_CREATE_PLAYLISTS)
+        cur.execute(_CREATE_SMART_PLAYLISTS)
+        # Migrate: add date_added to existing tracks tables
+        try:
+            cur.execute("ALTER TABLE tracks ADD COLUMN date_added REAL")
+        except sqlite3.OperationalError:
+            pass  # column already exists
+        # Migrate: drop old simple playlists table
+        cur.execute("DROP TABLE IF EXISTS playlists")
         self._fts_available = False
         try:
             cur.execute(_CREATE_FTS)
@@ -137,13 +183,13 @@ class Database:
             title, artist, album_artist, album,
             track_number, disc_number, year, genre,
             bpm, key_, bucket, fingerprint,
-            tag_completeness, tag_source, has_artwork, file_mtime
+            tag_completeness, tag_source, has_artwork, file_mtime, date_added
         ) VALUES (
             :file_path, :file_size, :bitrate, :duration,
             :title, :artist, :album_artist, :album,
             :track_number, :disc_number, :year, :genre,
             :bpm, :key_, :bucket, :fingerprint,
-            :tag_completeness, :tag_source, :has_artwork, :file_mtime
+            :tag_completeness, :tag_source, :has_artwork, :file_mtime, :date_added
         )
         ON CONFLICT(file_path) DO UPDATE SET
             file_size        = excluded.file_size,
@@ -187,6 +233,7 @@ class Database:
             "tag_source": track.tag_source,
             "has_artwork": int(track.has_artwork),
             "file_mtime": file_mtime,
+            "date_added": track.date_added if track.date_added is not None else time.time(),
         }
         try:
             with self._lock:
@@ -360,6 +407,66 @@ class Database:
     def delete_playlist(self, name: str) -> None:
         with self._lock:
             self._conn.execute("DELETE FROM playlists WHERE name = ?", (name,))
+            self._conn.commit()
+
+    # ------------------------------------------------------------------
+    # SmartPlaylist CRUD
+    # ------------------------------------------------------------------
+
+    def get_all_smart_playlists(self) -> list[SmartPlaylist]:
+        rows = self._conn.execute(
+            "SELECT name, folder, format, conjunction, rules, "
+            "limit_count, limit_order, sort_by, show_in_sidebar "
+            "FROM smart_playlists"
+        ).fetchall()
+        result = []
+        for row in rows:
+            raw = json.loads(row["rules"]) if row["rules"] else []
+            rules = [_deserialize_rule(r) for r in raw]
+            result.append(SmartPlaylist(
+                name=row["name"],
+                folder=row["folder"],
+                format=row["format"] or "m3u",
+                conjunction=row["conjunction"] or "AND",
+                rules=rules,
+                limit_count=row["limit_count"],
+                limit_order=row["limit_order"],
+                sort_by=row["sort_by"],
+                show_in_sidebar=bool(row["show_in_sidebar"]),
+            ))
+        return result
+
+    def upsert_smart_playlist(self, playlist: SmartPlaylist) -> None:
+        rules_json = json.dumps([_serialize_rule(r) for r in playlist.rules])
+        with self._lock:
+            self._conn.execute(
+                """INSERT INTO smart_playlists
+                   (name, folder, format, conjunction, rules,
+                    limit_count, limit_order, sort_by, show_in_sidebar)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(name) DO UPDATE SET
+                       folder          = excluded.folder,
+                       format          = excluded.format,
+                       conjunction     = excluded.conjunction,
+                       rules           = excluded.rules,
+                       limit_count     = excluded.limit_count,
+                       limit_order     = excluded.limit_order,
+                       sort_by         = excluded.sort_by,
+                       show_in_sidebar = excluded.show_in_sidebar""",
+                (
+                    playlist.name, playlist.folder, playlist.format,
+                    playlist.conjunction, rules_json,
+                    playlist.limit_count, playlist.limit_order,
+                    playlist.sort_by, int(playlist.show_in_sidebar),
+                ),
+            )
+            self._conn.commit()
+
+    def delete_smart_playlist(self, name: str) -> None:
+        with self._lock:
+            self._conn.execute(
+                "DELETE FROM smart_playlists WHERE name = ?", (name,)
+            )
             self._conn.commit()
 
     def close(self) -> None:
