@@ -20,7 +20,7 @@ class RuleGroup:
     """A group of SimpleRules combined with AND or OR."""
 
     conjunction: str  # "AND" | "OR"
-    rules: list[SimpleRule]
+    rules: list[SimpleRule | RuleGroup]
 
 
 @dataclass
@@ -69,7 +69,7 @@ class Track:
     tag_completeness: float = 0.0
     tag_source: str | None = None
     has_artwork: bool = False
-    date_added: float | None = None
+    date_added: float | None = None  # Unix timestamp (time.time()) set on first scan
 
     def compute_completeness(self, required_tags: list[str]) -> float:
         """Compute tag completeness as fraction of required tags that are non-None."""
