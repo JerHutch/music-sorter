@@ -160,3 +160,43 @@ def test_playlist_definition():
         sort_by="bpm",
     )
     assert playlist.folder == "DJ/Sets"
+
+
+def test_simple_rule_fields():
+    from src.core.models import SimpleRule
+
+    rule = SimpleRule(field="genre", operator="contains", value="Jazz")
+    assert rule.field == "genre"
+    assert rule.operator == "contains"
+    assert rule.value == "Jazz"
+
+
+def test_rule_group_fields():
+    from src.core.models import SimpleRule, RuleGroup
+
+    group = RuleGroup(
+        conjunction="OR",
+        rules=[SimpleRule(field="genre", operator="is", value="Jazz")],
+    )
+    assert group.conjunction == "OR"
+    assert len(group.rules) == 1
+
+
+def test_smart_playlist_defaults():
+    from src.core.models import SmartPlaylist
+
+    p = SmartPlaylist(name="Test")
+    assert p.conjunction == "AND"
+    assert p.rules == []
+    assert p.limit_count is None
+    assert p.limit_order is None
+    assert p.sort_by is None
+    assert p.folder is None
+    assert p.format == "m3u"
+    assert p.show_in_sidebar is True
+
+
+def test_track_has_date_added():
+    t = Track(file_path=Path("/a.mp3"), file_size=1000, bitrate=320, duration=180.0)
+    assert hasattr(t, "date_added")
+    assert t.date_added is None
