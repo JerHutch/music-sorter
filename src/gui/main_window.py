@@ -14,7 +14,8 @@ import logging
 
 from src.core.config import Config, USER_CONFIG_PATH
 from src.core.database import Database
-from src.core.models import TagConflict, Track
+from src.core.models import TagConflict, Track, SmartPlaylist
+from src.core.playlist import evaluate_playlist
 from src.gui.dashboard import Dashboard
 from src.gui.dupe_resolver import DupeResolver
 from src.gui.itunes_import import ITunesImport
@@ -55,6 +56,8 @@ class MainWindow(QMainWindow):
         self._tag_worker: TagWriteWorker | None = None
         self._analyze_worker: AnalyzeWorker | None = None
         self._artwork_worker: ArtworkWorker | None = None
+        self._smart_playlists: list[SmartPlaylist] = []
+        self._playlist_sidebar_items: dict[str, QTreeWidgetItem] = {}
 
         self._build_ui()
         self._settings_view.load_config(self._config)
@@ -252,6 +255,21 @@ class MainWindow(QMainWindow):
         self._task_tree.itemClicked.connect(self._on_task_clicked)
         layout.addWidget(self._task_tree)
 
+        # ---- Playlists section ----
+        self._playlists_section_lbl = QLabel("Playlists")
+        self._playlists_section_lbl.setStyleSheet("margin-top: 11px; " + _section_style)
+        self._playlists_section_lbl.setVisible(False)
+        layout.addWidget(self._playlists_section_lbl)
+
+        self._playlists_tree = QTreeWidget()
+        self._playlists_tree.setHeaderHidden(True)
+        self._playlists_tree.setRootIsDecorated(False)
+        self._playlists_tree.setIndentation(0)
+        self._playlists_tree.setStyleSheet(_tree_style)
+        self._playlists_tree.setVisible(False)
+        self._playlists_tree.itemClicked.connect(self._on_sidebar_playlist_clicked)
+        layout.addWidget(self._playlists_tree)
+
         layout.addStretch()
         return sidebar
 
@@ -369,6 +387,7 @@ class MainWindow(QMainWindow):
         }
         self._dashboard.update_stats(stats)
         self._update_sidebar_counts(missing_tags, no_artwork, raw_stats.get("bucket_counts", {}))
+        self._update_sidebar_playlists(self._db.get_all_smart_playlists())
 
     def _update_sidebar_counts(self, missing_tags: int, no_artwork: int,
                                 bucket_counts: dict) -> None:
@@ -395,6 +414,29 @@ class MainWindow(QMainWindow):
 
         self._task_items["Missing Tags"].setText(0, f"⚠ Missing Tags ({missing_tags})")
         self._task_items["No Artwork"].setText(0, f"🖼 No Artwork ({no_artwork})")
+
+    def _update_sidebar_playlists(self, playlists: list[SmartPlaylist]) -> None:
+        self._smart_playlists = playlists
+        self._playlist_sidebar_items.clear()
+        self._playlists_tree.clear()
+        sidebar_playlists = [p for p in playlists if p.show_in_sidebar]
+        visible = bool(sidebar_playlists)
+        self._playlists_section_lbl.setVisible(visible)
+        self._playlists_tree.setVisible(visible)
+        for pld in sidebar_playlists:
+            item = QTreeWidgetItem([f"▶ {pld.name}"])
+            item.setData(0, Qt.ItemDataRole.UserRole, pld)
+            self._playlists_tree.addTopLevelItem(item)
+            self._playlist_sidebar_items[pld.name] = item
+
+    def _on_sidebar_playlist_clicked(self, item: QTreeWidgetItem, _col: int) -> None:
+        pld = item.data(0, Qt.ItemDataRole.UserRole)
+        if pld is None:
+            return
+        matching = evaluate_playlist(pld, self._all_tracks)
+        matching_paths = {t.file_path for t in matching}
+        self._show_page(_PAGE_LIBRARY)
+        self._library.filter_by_fn(lambda t: t.file_path in matching_paths)
 
     # ------------------------------------------------------------------
     # Tag editing
