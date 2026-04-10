@@ -66,17 +66,6 @@ CREATE TABLE IF NOT EXISTS history (
 )
 """
 
-_CREATE_PLAYLISTS = """
-CREATE TABLE IF NOT EXISTS playlists (
-    id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    name    TEXT NOT NULL UNIQUE,
-    filters TEXT NOT NULL,
-    folder  TEXT,
-    format  TEXT NOT NULL DEFAULT 'm3u',
-    sort_by TEXT
-)
-"""
-
 _CREATE_SMART_PLAYLISTS = """
 CREATE TABLE IF NOT EXISTS smart_playlists (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
