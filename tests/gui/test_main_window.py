@@ -19,7 +19,7 @@ def _make_mock_env(bucket_counts=None):
         "bucket_counts": bucket_counts or {},
         "bitrate_counts": {},
     }
-    mock_db.get_all_playlists.return_value = []
+    mock_db.get_all_smart_playlists.return_value = []
     return mock_config, mock_db
 
 
