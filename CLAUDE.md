@@ -36,7 +36,7 @@ The strict core/GUI separation is the central design constraint: all `src/core/`
 
 | Module | Responsibility |
 |---|---|
-| `models.py` | Dataclasses: `Track`, `DupeGroup`, `TagConflict`, `RenameOperation`, `HistoryEntry`, `NormalizationRule`, `PlaylistDefinition` |
+| `models.py` | Dataclasses: `Track`, `DupeGroup`, `TagConflict`, `RenameOperation`, `HistoryEntry`, `NormalizationRule`, `SimpleRule`, `RuleGroup`, `SmartPlaylist` |
 | `database.py` | SQLite cache (`~/.local/share/music-sorter/library.db`), FTS5 search, track upsert |
 | `config.py` | YAML config with deep-merge defaults; user config at `~/.config/music-sorter/config.yaml` |
 | `scanner.py` | Recursive MP3 discovery |

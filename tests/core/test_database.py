@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from src.core.database import Database
-from src.core.models import Track, PlaylistDefinition
+from src.core.models import Track
 
 
 @pytest.fixture
@@ -99,37 +99,99 @@ def test_filter_tracks(db):
     assert results[0].genre == "House"
 
 
-def test_upsert_and_get_playlist(tmp_path):
-    from src.core.database import Database
-    db = Database(tmp_path / "test.db")
-    pld = PlaylistDefinition(name="My Set", filters={"bucket": "DJ Music"}, folder="DJ", format="m3u", sort_by="bpm")
-    db.upsert_playlist(pld)
-    playlists = db.get_all_playlists()
+import time as _time
+from src.core.models import SmartPlaylist, SimpleRule, RuleGroup
+
+
+def test_date_added_set_on_first_upsert(tmp_path):
+    db = Database(tmp_path / "lib.db")
+    track = _make_track()
+    before = _time.time()
+    db.upsert_track(track, file_mtime=1000.0)
+    after = _time.time()
+    row = db._conn.execute(
+        "SELECT date_added FROM tracks WHERE file_path = ?",
+        (str(track.file_path),),
+    ).fetchone()
+    assert row is not None
+    assert before <= row["date_added"] <= after
+
+
+def test_date_added_not_overwritten_on_re_upsert(tmp_path):
+    db = Database(tmp_path / "lib.db")
+    track = _make_track()
+    db.upsert_track(track, file_mtime=1000.0)
+    row1 = db._conn.execute(
+        "SELECT date_added FROM tracks WHERE file_path = ?",
+        (str(track.file_path),),
+    ).fetchone()
+    original = row1["date_added"]
+    _time.sleep(0.02)
+    db.upsert_track(track, file_mtime=2000.0)
+    row2 = db._conn.execute(
+        "SELECT date_added FROM tracks WHERE file_path = ?",
+        (str(track.file_path),),
+    ).fetchone()
+    assert row2["date_added"] == original
+
+
+def test_upsert_and_get_smart_playlist(tmp_path):
+    db = Database(tmp_path / "lib.db")
+    playlist = SmartPlaylist(
+        name="Jazz Night",
+        conjunction="AND",
+        rules=[
+            SimpleRule(field="genre", operator="contains", value="Jazz"),
+            RuleGroup(
+                conjunction="OR",
+                rules=[
+                    SimpleRule(field="bpm", operator="gt", value=90),
+                    SimpleRule(field="bpm", operator="lt", value=70),
+                ],
+            ),
+        ],
+        limit_count=50,
+        limit_order="random",
+        sort_by="bpm",
+        folder="DJ/Sets",
+        format="m3u",
+        show_in_sidebar=True,
+    )
+    db.upsert_smart_playlist(playlist)
+    playlists = db.get_all_smart_playlists()
     assert len(playlists) == 1
-    assert playlists[0].name == "My Set"
-    assert playlists[0].filters == {"bucket": "DJ Music"}
-    assert playlists[0].folder == "DJ"
-    db.close()
+    p = playlists[0]
+    assert p.name == "Jazz Night"
+    assert p.conjunction == "AND"
+    assert len(p.rules) == 2
+    assert isinstance(p.rules[0], SimpleRule)
+    assert p.rules[0].field == "genre"
+    assert isinstance(p.rules[1], RuleGroup)
+    assert p.rules[1].conjunction == "OR"
+    assert len(p.rules[1].rules) == 2
+    assert p.limit_count == 50
+    assert p.limit_order == "random"
+    assert p.sort_by == "bpm"
+    assert p.folder == "DJ/Sets"
+    assert p.show_in_sidebar is True
 
 
-def test_delete_playlist(tmp_path):
-    from src.core.database import Database
-    db = Database(tmp_path / "test.db")
-    pld = PlaylistDefinition(name="To Delete", filters={})
-    db.upsert_playlist(pld)
-    db.delete_playlist("To Delete")
-    assert db.get_all_playlists() == []
-    db.close()
-
-
-def test_upsert_playlist_updates_existing(tmp_path):
-    from src.core.database import Database
-    db = Database(tmp_path / "test.db")
-    pld = PlaylistDefinition(name="Set A", filters={"genre": "House"}, sort_by="bpm")
-    db.upsert_playlist(pld)
-    pld2 = PlaylistDefinition(name="Set A", filters={"genre": "Techno"}, sort_by="artist")
-    db.upsert_playlist(pld2)
-    playlists = db.get_all_playlists()
+def test_upsert_smart_playlist_updates_existing(tmp_path):
+    db = Database(tmp_path / "lib.db")
+    db.upsert_smart_playlist(SmartPlaylist(name="Set A", rules=[
+        SimpleRule(field="genre", operator="is", value="House"),
+    ]))
+    db.upsert_smart_playlist(SmartPlaylist(name="Set A", rules=[
+        SimpleRule(field="genre", operator="is", value="Techno"),
+    ]))
+    playlists = db.get_all_smart_playlists()
     assert len(playlists) == 1
-    assert playlists[0].filters == {"genre": "Techno"}
-    db.close()
+    assert isinstance(playlists[0].rules[0], SimpleRule)
+    assert playlists[0].rules[0].value == "Techno"
+
+
+def test_delete_smart_playlist(tmp_path):
+    db = Database(tmp_path / "lib.db")
+    db.upsert_smart_playlist(SmartPlaylist(name="Gone", rules=[]))
+    db.delete_smart_playlist("Gone")
+    assert db.get_all_smart_playlists() == []

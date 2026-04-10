@@ -7,6 +7,38 @@ from pathlib import Path
 
 
 @dataclass
+class SimpleRule:
+    """A single filter condition."""
+
+    field: str
+    operator: str
+    value: str | float | bool | None = None
+
+
+@dataclass
+class RuleGroup:
+    """A group of SimpleRules combined with AND or OR."""
+
+    conjunction: str  # "AND" | "OR"
+    rules: list[SimpleRule | RuleGroup]
+
+
+@dataclass
+class SmartPlaylist:
+    """A named smart playlist with a rule tree."""
+
+    name: str
+    conjunction: str = "AND"
+    rules: list = dc_field(default_factory=list)  # list[SimpleRule | RuleGroup]
+    limit_count: int | None = None
+    limit_order: str | None = None
+    sort_by: str | None = None
+    folder: str | None = None
+    format: str = "m3u"
+    show_in_sidebar: bool = True
+
+
+@dataclass
 class Track:
     """Represents one MP3 file and its metadata."""
 
@@ -37,6 +69,7 @@ class Track:
     tag_completeness: float = 0.0
     tag_source: str | None = None
     has_artwork: bool = False
+    date_added: float | None = None  # Unix timestamp (time.time()) set on first scan
 
     def compute_completeness(self, required_tags: list[str]) -> float:
         """Compute tag completeness as fraction of required tags that are non-None."""
@@ -98,14 +131,3 @@ class NormalizationRule:
     field: str
     rule_type: str  # case, mapping, regex
     parameters: dict
-
-
-@dataclass
-class PlaylistDefinition:
-    """A saved playlist query definition."""
-
-    name: str
-    filters: dict
-    folder: str | None = None
-    format: str = "m3u"
-    sort_by: str | None = None

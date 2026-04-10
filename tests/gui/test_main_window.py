@@ -19,7 +19,7 @@ def _make_mock_env(bucket_counts=None):
         "bucket_counts": bucket_counts or {},
         "bitrate_counts": {},
     }
-    mock_db.get_all_playlists.return_value = []
+    mock_db.get_all_smart_playlists.return_value = []
     return mock_config, mock_db
 
 
@@ -266,3 +266,70 @@ def test_batch_tag_write_hides_progress_bar_on_finished(qtbot):
     hide_fn([])
 
     assert not win._progress_bar.isVisible()
+
+
+def test_sidebar_playlists_section_hidden_when_empty(qtbot):
+    """Playlists section is hidden when no playlists have show_in_sidebar=True."""
+    mock_config, mock_db = _make_mock_env()
+    with patch("src.gui.main_window.Database") as MockDB, \
+         patch("src.gui.main_window.Config.load_user_config") as mock_cfg:
+        mock_cfg.return_value = mock_config
+        MockDB.return_value = mock_db
+        from src.gui.main_window import MainWindow
+        win = MainWindow()
+        qtbot.addWidget(win)
+
+    assert not win._playlists_section_lbl.isVisible()
+    assert not win._playlists_tree.isVisible()
+
+
+def test_sidebar_playlists_section_shows_sidebar_playlists(qtbot):
+    """Playlists with show_in_sidebar=True appear in the sidebar section."""
+    from src.core.models import SmartPlaylist
+    mock_config, mock_db = _make_mock_env()
+    pld_visible = SmartPlaylist(name="Road Trip", show_in_sidebar=True)
+    pld_hidden = SmartPlaylist(name="Hidden Mix", show_in_sidebar=False)
+    mock_db.get_all_smart_playlists.return_value = [pld_visible, pld_hidden]
+
+    with patch("src.gui.main_window.Database") as MockDB, \
+         patch("src.gui.main_window.Config.load_user_config") as mock_cfg:
+        mock_cfg.return_value = mock_config
+        MockDB.return_value = mock_db
+        from src.gui.main_window import MainWindow
+        win = MainWindow()
+        qtbot.addWidget(win)
+        win.show()
+
+    assert win._playlists_section_lbl.isVisible()
+    assert win._playlists_tree.isVisible()
+    assert "Road Trip" in win._playlist_sidebar_items
+    assert "Hidden Mix" not in win._playlist_sidebar_items
+
+
+def test_sidebar_playlists_update_on_refresh(qtbot):
+    """After _refresh_library, new sidebar playlists appear and removed ones go."""
+    from src.core.models import SmartPlaylist
+    mock_config, mock_db = _make_mock_env()
+    mock_db.get_all_smart_playlists.return_value = [
+        SmartPlaylist(name="Jazz Vibes", show_in_sidebar=True)
+    ]
+
+    with patch("src.gui.main_window.Database") as MockDB, \
+         patch("src.gui.main_window.Config.load_user_config") as mock_cfg:
+        mock_cfg.return_value = mock_config
+        MockDB.return_value = mock_db
+        from src.gui.main_window import MainWindow
+        win = MainWindow()
+        qtbot.addWidget(win)
+
+    assert "Jazz Vibes" in win._playlist_sidebar_items
+    assert "New Playlist" not in win._playlist_sidebar_items
+
+    mock_db.get_all_smart_playlists.return_value = [
+        SmartPlaylist(name="Jazz Vibes", show_in_sidebar=True),
+        SmartPlaylist(name="New Playlist", show_in_sidebar=True),
+    ]
+    win._refresh_library()
+
+    assert "Jazz Vibes" in win._playlist_sidebar_items
+    assert "New Playlist" in win._playlist_sidebar_items
