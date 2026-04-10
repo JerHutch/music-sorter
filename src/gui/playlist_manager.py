@@ -415,6 +415,8 @@ class PlaylistManager(QWidget):
     # ------------------------------------------------------------------
 
     def _load_playlists(self) -> None:
+        self._current = None
+        self._editor_group.setEnabled(False)
         self._playlists = self._db.get_all_smart_playlists()
         self._populate_tree(self._playlists)
 
@@ -494,12 +496,16 @@ class PlaylistManager(QWidget):
             self._load_playlists()
 
     def _new_folder(self) -> None:
-        name, ok = QInputDialog.getText(self, "New Folder", "Folder name:")
-        if ok and name.strip():
-            folder_item = QTreeWidgetItem(self._tree)
-            folder_item.setText(0, name.strip())
-            folder_item.setData(0, Qt.ItemDataRole.UserRole, None)
-            folder_item.setExpanded(True)
+        folder, ok = QInputDialog.getText(self, "New Folder", "Folder name:")
+        if not (ok and folder.strip()):
+            return
+        playlist_name, ok2 = QInputDialog.getText(
+            self, "New Playlist in Folder", "First playlist name:"
+        )
+        if ok2 and playlist_name.strip():
+            pld = SmartPlaylist(name=playlist_name.strip(), folder=folder.strip())
+            self._db.upsert_smart_playlist(pld)
+            self._load_playlists()
 
     def _rename_playlist(self, item: QTreeWidgetItem, pld: SmartPlaylist) -> None:
         new_name, ok = QInputDialog.getText(self, "Rename", "New name:", text=pld.name)
@@ -559,12 +565,16 @@ class PlaylistManager(QWidget):
 
     def _regenerate_all(self) -> None:
         count = 0
-        skipped = 0
+        skipped_no_folder = 0
+        skipped_empty = 0
         for pld in self._playlists:
             if not pld.folder:
-                skipped += 1
+                skipped_no_folder += 1
                 continue
             matching = evaluate_playlist(pld, self._all_tracks)
+            if not matching:
+                skipped_empty += 1
+                continue
             folder_path = Path(pld.folder)
             if not folder_path.is_absolute():
                 folder_path = Path.home() / folder_path
@@ -573,6 +583,8 @@ class PlaylistManager(QWidget):
             generate_m3u(matching, output) if pld.format == "m3u" else generate_pls(matching, output)
             count += 1
         msg = f"Updated {count} playlist(s)."
-        if skipped:
-            msg += f" {skipped} skipped (no folder set)."
+        if skipped_no_folder:
+            msg += f" {skipped_no_folder} skipped (no folder set)."
+        if skipped_empty:
+            msg += f" {skipped_empty} skipped (no matching tracks)."
         QMessageBox.information(self, "Re-generate All", msg)
