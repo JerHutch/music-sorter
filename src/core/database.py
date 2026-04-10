@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from src.core.models import Track, PlaylistDefinition, SimpleRule, RuleGroup, SmartPlaylist
+from src.core.models import Track, SimpleRule, RuleGroup, SmartPlaylist
 
 import logging
 logger = logging.getLogger(__name__)
@@ -358,45 +358,6 @@ class Database:
             f"SELECT * FROM tracks WHERE {conditions}", values
         ).fetchall()
         return [_row_to_track(r) for r in rows]
-
-    # ------------------------------------------------------------------
-    # Playlist CRUD
-    # ------------------------------------------------------------------
-
-    def get_all_playlists(self) -> list:
-        rows = self._conn.execute(
-            "SELECT name, filters, folder, format, sort_by FROM playlists"
-        ).fetchall()
-        result = []
-        for row in rows:
-            filters = json.loads(row["filters"]) if row["filters"] else {}
-            result.append(PlaylistDefinition(
-                name=row["name"],
-                filters=filters,
-                folder=row["folder"],
-                format=row["format"] or "m3u",
-                sort_by=row["sort_by"],
-            ))
-        return result
-
-    def upsert_playlist(self, pld) -> None:
-        with self._lock:
-            self._conn.execute(
-                """INSERT INTO playlists (name, filters, folder, format, sort_by)
-                   VALUES (?, ?, ?, ?, ?)
-                   ON CONFLICT(name) DO UPDATE SET
-                       filters = excluded.filters,
-                       folder  = excluded.folder,
-                       format  = excluded.format,
-                       sort_by = excluded.sort_by""",
-                (pld.name, json.dumps(pld.filters), pld.folder, pld.format, pld.sort_by),
-            )
-            self._conn.commit()
-
-    def delete_playlist(self, name: str) -> None:
-        with self._lock:
-            self._conn.execute("DELETE FROM playlists WHERE name = ?", (name,))
-            self._conn.commit()
 
     # ------------------------------------------------------------------
     # SmartPlaylist CRUD

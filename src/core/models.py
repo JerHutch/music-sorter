@@ -131,14 +131,3 @@ class NormalizationRule:
     field: str
     rule_type: str  # case, mapping, regex
     parameters: dict
-
-
-@dataclass
-class PlaylistDefinition:
-    """A saved playlist query definition."""
-
-    name: str
-    filters: dict
-    folder: str | None = None
-    format: str = "m3u"
-    sort_by: str | None = None

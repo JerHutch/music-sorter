@@ -65,7 +65,6 @@ from src.core.models import (
     DupeGroup,
     HistoryEntry,
     NormalizationRule,
-    PlaylistDefinition,
     RenameOperation,
     TagConflict,
 )
@@ -149,17 +148,6 @@ def test_normalization_rule():
         parameters={"Hip Hop": "Hip-Hop"},
     )
     assert rule.field == "genre"
-
-
-def test_playlist_definition():
-    playlist = PlaylistDefinition(
-        name="High Energy",
-        folder="DJ/Sets",
-        format="m3u",
-        filters={"bucket": "DJ Music", "bpm": {"min": 125, "max": 140}},
-        sort_by="bpm",
-    )
-    assert playlist.folder == "DJ/Sets"
 
 
 def test_simple_rule_fields():
