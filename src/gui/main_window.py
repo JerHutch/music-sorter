@@ -25,7 +25,7 @@ from src.gui.rename_preview import RenamePreview
 from src.gui.settings_view import SettingsView
 from src.gui.tag_editor import TagEditor
 from src.core.artwork import embed_artwork, read_artwork
-from src.gui.workers import AnalyzeWorker, ArtworkWorker, ScanWorker, TagWriteWorker
+from src.gui.workers import AnalyzeWorker, ArtworkWorker, AutoTagWorker, ScanWorker, TagWriteWorker
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +55,7 @@ class MainWindow(QMainWindow):
         self._scan_worker: ScanWorker | None = None
         self._tag_worker: TagWriteWorker | None = None
         self._analyze_worker: AnalyzeWorker | None = None
+        self._autotag_worker: AutoTagWorker | None = None
         self._artwork_worker: ArtworkWorker | None = None
         self._smart_playlists: list[SmartPlaylist] = []
         self._playlist_sidebar_items: dict[str, QTreeWidgetItem] = {}
@@ -465,26 +466,46 @@ class MainWindow(QMainWindow):
         self._tag_editor.load_tracks(tracks)
 
     def _on_auto_tag(self, tracks: list[Track]) -> None:
-        """Run BPM/key analysis on tracks that are missing both values."""
-        self._start_analyze(tracks, overwrite=False)
+        """Look up metadata via AcoustID/MusicBrainz for selected tracks."""
+        if not tracks:
+            return
+        if self._autotag_worker and self._autotag_worker.isRunning():
+            return
+        self._autotag_worker = AutoTagWorker(tracks, self._db)
+        self._autotag_worker.progress.connect(self._on_autotag_progress)
+        self._autotag_worker.finished.connect(self._on_autotag_finished)
+        self._autotag_worker.error.connect(
+            lambda msg: self._status_label.setText(f"Auto-tag error: {msg}")
+        )
+        self._status_label.setText(f"Looking up metadata for {len(tracks)} track(s)…")
+        self._progress_bar.setRange(0, len(tracks))
+        self._progress_bar.setValue(0)
+        self._progress_bar.setVisible(True)
+        self._autotag_worker.start()
+
+    def _on_autotag_progress(self, completed: int, total: int) -> None:
+        self._progress_bar.setValue(completed)
+
+    def _on_autotag_finished(self, conflicts: list, unmatched: int) -> None:
+        # TODO: wire up conflict resolution UI in a later task
+        pass
 
     def _on_analyze(self, tracks: list[Track]) -> None:
-        """Run BPM/key analysis on all selected tracks, overwriting existing values."""
-        self._start_analyze(tracks, overwrite=True)
+        """Run BPM/key detection on selected tracks."""
+        self._start_analyze(tracks)
 
-    def _start_analyze(self, tracks: list[Track], overwrite: bool) -> None:
+    def _start_analyze(self, tracks: list[Track]) -> None:
         if not tracks:
             return
         if self._analyze_worker and self._analyze_worker.isRunning():
             return
-        self._analyze_worker = AnalyzeWorker(tracks, self._db, overwrite=overwrite)
+        self._analyze_worker = AnalyzeWorker(tracks, self._db)
         self._analyze_worker.progress.connect(self._on_analyze_progress)
         self._analyze_worker.finished.connect(self._on_analyze_finished)
         self._analyze_worker.error.connect(
             lambda msg: self._status_label.setText(f"Analysis error: {msg}")
         )
-        label = "Analyzing" if overwrite else "Auto-tagging"
-        self._status_label.setText(f"{label} {len(tracks)} track(s)…")
+        self._status_label.setText(f"Analyzing {len(tracks)} track(s)…")
         self._progress_bar.setRange(0, len(tracks))
         self._progress_bar.setValue(0)
         self._progress_bar.setVisible(True)

@@ -181,31 +181,21 @@ class RenameWorker(QThread):
 
 
 class AnalyzeWorker(QThread):
-    """Detects BPM and key for a list of tracks, writes the results back to disk and DB.
-
-    When *overwrite* is False (auto-tag mode) only tracks missing both bpm and
-    key are processed.  When *overwrite* is True (analyze mode) all tracks are
-    processed regardless of existing values.
-    """
+    """Detects BPM and key for a list of tracks, writes the results back to disk and DB."""
 
     progress = Signal(int, int)   # completed, total
     finished = Signal(list)       # list[Track] — updated tracks
     error = Signal(str)
 
-    def __init__(self, tracks: list[Track], db: Database, overwrite: bool = False):
+    def __init__(self, tracks: list[Track], db: Database):
         super().__init__()
         self._tracks = tracks
         self._db = db
-        self._overwrite = overwrite
 
     def run(self):
-        candidates = (
-            self._tracks if self._overwrite
-            else [t for t in self._tracks if t.bpm is None and t.key is None]
-        )
-        total = len(candidates)
+        total = len(self._tracks)
         updated: list[Track] = []
-        for i, track in enumerate(candidates, 1):
+        for i, track in enumerate(self._tracks, 1):
             try:
                 bpm = detect_bpm(track.file_path)
                 key = detect_key(track.file_path)
