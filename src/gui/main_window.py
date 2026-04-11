@@ -175,6 +175,10 @@ class MainWindow(QMainWindow):
         self._itunes_import.apply_requested.connect(self._on_itunes_apply)
         # Wire rename complete → refresh
         self._rename_preview.rename_complete.connect(lambda _: self._refresh_library())
+        # Wire playlist mutations → sidebar refresh
+        self._playlist_manager.playlists_changed.connect(
+            lambda: self._update_sidebar_playlists(self._db.get_all_smart_playlists())
+        )
 
         self._stack.setCurrentIndex(_PAGE_DASHBOARD)
 
@@ -595,12 +599,12 @@ class MainWindow(QMainWindow):
             return
         itunes_edits: dict[Path, tuple[Track, list[str]]] = {}
         for conflict in conflicts:
-            if conflict.resolution != "itunes":
+            if conflict.resolution != "incoming":
                 continue
             track = next((t for t in self._all_tracks if t.file_path == conflict.file_path), None)
             if track is None:
                 continue
-            setattr(track, conflict.field, conflict.itunes_value)
+            setattr(track, conflict.field, conflict.incoming_value)
             if conflict.file_path not in itunes_edits:
                 itunes_edits[conflict.file_path] = (track, [])
             itunes_edits[conflict.file_path][1].append(conflict.field)

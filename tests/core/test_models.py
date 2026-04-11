@@ -114,8 +114,8 @@ def test_tag_conflict():
     conflict = TagConflict(
         file_path=Path("/music/song.mp3"),
         field="genre",
-        file_value="Electronic",
-        itunes_value="Dance",
+        local_value="Electronic",
+        incoming_value="Dance",
     )
     assert conflict.field == "genre"
     assert conflict.resolution is None

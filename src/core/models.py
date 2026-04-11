@@ -92,13 +92,13 @@ class DupeGroup:
 
 @dataclass
 class TagConflict:
-    """A conflict between file tag and iTunes tag for a single field."""
+    """A conflict between local tag value and an incoming value for a single field."""
 
     file_path: Path
     field: str
-    file_value: str
-    itunes_value: str
-    resolution: str | None = None  # "file", "itunes", or None (unresolved)
+    local_value: str
+    incoming_value: str
+    resolution: str | None = None  # "local", "incoming", or None (unresolved)
 
 
 @dataclass

@@ -42,5 +42,5 @@ def resolve_conflicts(track, itunes_entry):
         if file_val is None and itunes_val is not None:
             setattr(track, field, itunes_val)
         elif file_val is not None and itunes_val is not None and str(file_val) != str(itunes_val):
-            conflicts.append(TagConflict(file_path=track.file_path, field=field, file_value=str(file_val), itunes_value=str(itunes_val)))
+            conflicts.append(TagConflict(file_path=track.file_path, field=field, local_value=str(file_val), incoming_value=str(itunes_val)))
     return conflicts

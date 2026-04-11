@@ -93,8 +93,8 @@ class ITunesImport(QWidget):
             self._field_combo.addItem(field)
         btn_prefer_itunes = QPushButton("Always prefer iTunes for field")
         btn_prefer_file = QPushButton("Always prefer file for field")
-        btn_prefer_itunes.clicked.connect(lambda: self._bulk_set_field("itunes"))
-        btn_prefer_file.clicked.connect(lambda: self._bulk_set_field("file"))
+        btn_prefer_itunes.clicked.connect(lambda: self._bulk_set_field("incoming"))
+        btn_prefer_file.clicked.connect(lambda: self._bulk_set_field("local"))
         rules_row.addWidget(self._field_combo)
         rules_row.addWidget(btn_prefer_itunes)
         rules_row.addWidget(btn_prefer_file)
@@ -165,8 +165,8 @@ class ITunesImport(QWidget):
             self._table.insertRow(row)
             self._table.setItem(row, _COL_PATH, QTableWidgetItem(conflict.file_path.name))
             self._table.setItem(row, _COL_FIELD, QTableWidgetItem(conflict.field))
-            self._table.setItem(row, _COL_FILE_VAL, QTableWidgetItem(conflict.file_value))
-            self._table.setItem(row, _COL_ITUNES_VAL, QTableWidgetItem(conflict.itunes_value))
+            self._table.setItem(row, _COL_FILE_VAL, QTableWidgetItem(conflict.local_value))
+            self._table.setItem(row, _COL_ITUNES_VAL, QTableWidgetItem(conflict.incoming_value))
             combo = QComboBox()
             combo.addItems(["Keep file", "Use iTunes"])
             self._table.setCellWidget(row, _COL_ACTION, combo)
@@ -180,7 +180,7 @@ class ITunesImport(QWidget):
 
     def _bulk_set_field(self, source: str) -> None:
         field = self._field_combo.currentText()
-        choice = "Use iTunes" if source == "itunes" else "Keep file"
+        choice = "Use iTunes" if source == "incoming" else "Keep file"
         for row in range(self._table.rowCount()):
             field_item = self._table.item(row, _COL_FIELD)
             if field_item and field_item.text() == field:
@@ -193,6 +193,6 @@ class ITunesImport(QWidget):
         for row, conflict in enumerate(self._conflicts):
             combo: QComboBox = self._table.cellWidget(row, _COL_ACTION)
             if combo:
-                conflict.resolution = "itunes" if combo.currentText() == "Use iTunes" else "file"
+                conflict.resolution = "incoming" if combo.currentText() == "Use iTunes" else "local"
                 resolved.append(conflict)
         self.apply_requested.emit(resolved)

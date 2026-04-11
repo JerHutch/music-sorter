@@ -58,5 +58,5 @@ def test_resolve_conflicts_flags_difference():
     conflicts = resolve_conflicts(track, itunes_entry)
     assert len(conflicts) == 1
     assert conflicts[0].field == "genre"
-    assert conflicts[0].file_value == "Rock"
-    assert conflicts[0].itunes_value == "Electronic"
+    assert conflicts[0].local_value == "Rock"       # renamed from file_value
+    assert conflicts[0].incoming_value == "Electronic"  # renamed from itunes_value

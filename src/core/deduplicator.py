@@ -79,8 +79,8 @@ def merge_tags(keeper: Track, inferiors: list[Track]) -> list[TagConflict]:
                 conflicts.append(TagConflict(
                     file_path=keeper.file_path,
                     field=field,
-                    file_value=str(keeper_val),
-                    itunes_value=str(inf_val),
+                    local_value=str(keeper_val),
+                    incoming_value=str(inf_val),
                 ))
                 break
     return conflicts

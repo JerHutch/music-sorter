@@ -6,7 +6,7 @@ from src.gui.itunes_import import ITunesImport
 
 def _conflict(field="title", file_val="A", itunes_val="B"):
     return TagConflict(file_path=Path("/tmp/a.mp3"), field=field,
-                       file_value=file_val, itunes_value=itunes_val)
+                       local_value=file_val, incoming_value=itunes_val)
 
 
 def test_itunes_import_loads_conflicts(qtbot):
