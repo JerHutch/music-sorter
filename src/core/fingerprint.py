@@ -71,14 +71,16 @@ def _fetch_musicbrainz_details(recording_id: str) -> dict:
 
         track_number: int | None = None
         for medium in release.get("medium-list", []):
-            track_list = medium.get("track-list", [])
-            if track_list:
-                num = track_list[0].get("number") or track_list[0].get("position")
-                if num:
-                    try:
-                        track_number = int(num)
-                    except (ValueError, TypeError):
-                        pass
+            for track in medium.get("track-list", []):
+                if track.get("recording", {}).get("id") == recording_id:
+                    num = track.get("number") or track.get("position")
+                    if num:
+                        try:
+                            track_number = int(num)
+                        except (ValueError, TypeError):
+                            pass
+                    break
+            if track_number is not None:
                 break
 
         return {
@@ -111,6 +113,7 @@ def lookup_metadata(fingerprint: str, duration: float, api_key: str = _API_KEY) 
                 "year": mb_details.get("year"),
             }
     except Exception:
+        logger.warning("AcoustID lookup failed for fingerprint")
         return None
     return None
 

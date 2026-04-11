@@ -24,15 +24,21 @@ def test_generate_fingerprint_returns_none_for_invalid(tmp_path):
 
 
 @patch("src.core.fingerprint.acoustid.match")
-def test_lookup_metadata_success(mock_match):
+@patch("src.core.fingerprint.musicbrainzngs")
+def test_lookup_metadata_success(mock_mb, mock_match):
     mock_match.return_value = iter([
         (0.95, "recording-id-123", "Blue Monday", "New Order"),
     ])
+    mock_mb.get_recording_by_id.return_value = {
+        "recording": {"artist-credit": [], "release-list": []}
+    }
     result = lookup_metadata("fake-fingerprint", 240.0)
     assert result is not None
     assert result["title"] == "Blue Monday"
     assert result["artist"] == "New Order"
     assert result["score"] == 0.95
+    assert result["album"] is None
+    assert result["year"] is None
 
 
 @patch("src.core.fingerprint.acoustid.match")
@@ -66,7 +72,7 @@ def test_lookup_metadata_fetches_musicbrainz_details(mock_mb, mock_match):
                 "date": "1983-05-02",
                 "artist-credit": [{"artist": {"name": "New Order"}}],
                 "medium-list": [{
-                    "track-list": [{"number": "1", "position": "1"}]
+                    "track-list": [{"number": "1", "position": "1", "recording": {"id": "recording-id-123"}}]
                 }],
             }],
         }
