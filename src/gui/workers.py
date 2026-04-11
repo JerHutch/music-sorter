@@ -249,50 +249,51 @@ class AutoTagWorker(QThread):
         self._db = db
 
     def run(self) -> None:
-        from src.core.models import TagConflict
         total = len(self._tracks)
         conflicts: list[TagConflict] = []
         unmatched = 0
-
-        for i, track in enumerate(self._tracks, 1):
-            try:
-                fp = generate_fingerprint(track.file_path)
-                if fp is None:
-                    unmatched += 1
-                    track.acoustid_no_match = True
-                    self._upsert(track)
-                    self.progress.emit(i, total)
-                    continue
-
-                meta = lookup_metadata(fp, track.duration)
-                if meta is None:
-                    unmatched += 1
-                    track.acoustid_no_match = True
-                    self._upsert(track)
-                    self.progress.emit(i, total)
-                    continue
-
-                track.acoustid_no_match = False
-                self._upsert(track)
-
-                for field in _AUTOTAG_FIELDS:
-                    found_val = meta.get(field)
-                    if found_val is None:
+        try:
+            for i, track in enumerate(self._tracks, 1):
+                try:
+                    fp = generate_fingerprint(track.file_path)
+                    if fp is None:
+                        unmatched += 1
+                        track.acoustid_no_match = True
+                        self._upsert(track)
+                        self.progress.emit(i, total)
                         continue
-                    current_val = getattr(track, field, None)
-                    found_str = str(found_val)
-                    current_str = str(current_val) if current_val is not None else ""
-                    if found_str != current_str:
-                        conflicts.append(TagConflict(
-                            file_path=track.file_path,
-                            field=field,
-                            local_value=current_str,
-                            incoming_value=found_str,
-                        ))
-            except Exception:
-                logger.exception("AutoTagWorker: failed on %s", track.file_path)
-            self.progress.emit(i, total)
 
+                    meta = lookup_metadata(fp, track.duration)
+                    if meta is None:
+                        unmatched += 1
+                        track.acoustid_no_match = True
+                        self._upsert(track)
+                        self.progress.emit(i, total)
+                        continue
+
+                    track.acoustid_no_match = False
+                    self._upsert(track)
+
+                    for field in _AUTOTAG_FIELDS:
+                        found_val = meta.get(field)
+                        if found_val is None:
+                            continue
+                        current_val = getattr(track, field, None)
+                        found_str = str(found_val)
+                        current_str = str(current_val) if current_val is not None else ""
+                        if found_str != current_str:
+                            conflicts.append(TagConflict(
+                                file_path=track.file_path,
+                                field=field,
+                                local_value=current_str,
+                                incoming_value=found_str,
+                            ))
+                except Exception:
+                    logger.exception("AutoTagWorker: failed on %s", track.file_path)
+                self.progress.emit(i, total)
+        except Exception as exc:
+            self.error.emit(str(exc))
+            return
         self.finished.emit(conflicts, unmatched)
 
     def _upsert(self, track: Track) -> None:

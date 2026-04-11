@@ -55,6 +55,8 @@ def test_no_acoustid_match_marks_unmatched(mock_fp, mock_lookup, tmp_path):
 
     assert unmatched == 1
     assert conflicts == []
+    result = db.get_track(Path("/music/song.mp3"))
+    assert result.acoustid_no_match is True
 
 
 @patch("src.gui.workers.lookup_metadata")
