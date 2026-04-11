@@ -52,43 +52,49 @@ brew install chromaprint
 
 ## Installation
 
+[uv](https://docs.astral.sh/uv/) is required. Install it with:
+
+```sh
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Then:
+
 ```sh
 # Clone the repository
 git clone <repo-url>
 cd music-sorter
 
-# Create a virtual environment
-python -m venv .venv
-source .venv/bin/activate
-
-# Install the application and its dependencies
-pip install -e .
-
-# For development (adds pytest and coverage)
-pip install -e ".[dev]"
+# Install all dependencies (including dev tools) into .venv
+uv sync
 ```
 
 ## Running
 
 ```sh
-# After installation
-music-sorter
+uv run music-sorter
 
 # Or directly
-python -m src.gui.app
+uv run python -m src.gui.app
 ```
 
 ## Development
 
 ```sh
 # Run all tests
-pytest
+uv run pytest
 
 # Run with coverage report
-pytest --cov=src --cov-report=term-missing
+uv run pytest --cov=src --cov-report=term-missing
 
 # Run a specific test file
-pytest tests/core/test_tagger.py
+uv run pytest tests/core/test_tagger.py
+
+# Add a dependency
+uv add <package>
+
+# Add a dev-only dependency
+uv add --dev <package>
 ```
 
 The core library (`src/core/`) has no Qt dependency and can be tested without a display. GUI tests use `pytest-qt` and require a running display or a virtual framebuffer (e.g. `Xvfb`).
@@ -137,3 +143,4 @@ The core/GUI separation means all core logic is testable without a display. See 
 - **Configuration:** PyYAML
 - **Charts:** PySide6.QtCharts (bundled with PySide6)
 - **Tests:** pytest + pytest-cov + pytest-qt
+- **Package manager:** uv

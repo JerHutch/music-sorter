@@ -169,3 +169,8 @@ All three workers run concurrently. The conflict review page appears only after 
 - `tests/core/test_fingerprint.py` — unit tests for extended `lookup_metadata()` with mocked AcoustID and MusicBrainz responses; test fallback when MusicBrainz returns no releases
 - `tests/core/test_autotag_worker.py` (or extend `test_workers.py`) — test conflict generation: fields that match produce no conflict; empty fields default to Use Found; no-match tracks set `acoustid_no_match=True`
 - `tests/core/test_database.py` — test that `acoustid_no_match` column is added on init and round-trips correctly
+
+
+## Documentation
+
+- Udpate guides for library-browser, tag-editing

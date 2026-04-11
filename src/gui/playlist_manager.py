@@ -286,6 +286,7 @@ class PlaylistManager(QWidget):
     """Playlist tree with folder support and a smart rule builder editor."""
 
     show_tracks_requested = Signal(list)
+    playlists_changed = Signal()
 
     def __init__(self, db, all_tracks: list[Track] | None = None, parent=None):
         super().__init__(parent)
@@ -494,6 +495,7 @@ class PlaylistManager(QWidget):
             pld = SmartPlaylist(name=name.strip())
             self._db.upsert_smart_playlist(pld)
             self._load_playlists()
+            self.playlists_changed.emit()
 
     def _new_folder(self) -> None:
         folder, ok = QInputDialog.getText(self, "New Folder", "Folder name:")
@@ -506,6 +508,7 @@ class PlaylistManager(QWidget):
             pld = SmartPlaylist(name=playlist_name.strip(), folder=folder.strip())
             self._db.upsert_smart_playlist(pld)
             self._load_playlists()
+            self.playlists_changed.emit()
 
     def _rename_playlist(self, item: QTreeWidgetItem, pld: SmartPlaylist) -> None:
         new_name, ok = QInputDialog.getText(self, "Rename", "New name:", text=pld.name)
@@ -514,6 +517,7 @@ class PlaylistManager(QWidget):
             pld.name = new_name.strip()
             self._db.upsert_smart_playlist(pld)
             self._load_playlists()
+            self.playlists_changed.emit()
 
     def _delete_playlist(self, pld: SmartPlaylist) -> None:
         result = QMessageBox.question(
@@ -523,6 +527,7 @@ class PlaylistManager(QWidget):
         if result == QMessageBox.StandardButton.Yes:
             self._db.delete_smart_playlist(pld.name)
             self._load_playlists()
+            self.playlists_changed.emit()
 
     def _save_current(self) -> None:
         if self._current is None:
@@ -545,6 +550,7 @@ class PlaylistManager(QWidget):
             self._db.delete_smart_playlist(old_name)
         self._db.upsert_smart_playlist(self._current)
         self._load_playlists()
+        self.playlists_changed.emit()
 
     def _generate_current(self) -> None:
         if self._current is None:

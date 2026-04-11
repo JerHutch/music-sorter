@@ -1,80 +1,157 @@
 # Playlist Manager
 
-Music Sorter generates smart playlists by querying your library with filter criteria. Playlists are saved as definitions and can be regenerated any time your collection changes.
+Music Sorter generates smart playlists by evaluating filter rules against your library. Playlists are saved as definitions and can be regenerated any time your collection changes.
 
 Output formats: **M3U** and **PLS**.
 
-## Playlist Definitions
+## Opening the Playlist Manager
 
-Each playlist is defined by:
+Click **Playlists** in the top navigation bar. The left panel shows the playlist tree; the right panel is the editor for the selected playlist.
 
-- **Name** — displayed in the playlist tree
-- **Folder** — organizational path within the playlist tree (e.g. `DJ/Sets`)
-- **Format** — M3U or PLS
-- **Filters** — criteria tracks must match to be included
-- **Sort** — field to sort results by
+## Creating a Playlist
 
-Example definition (stored internally as YAML/JSON):
+1. Click **+ Playlist** in the toolbar above the tree.
+2. Enter a name when prompted — the playlist appears in the tree and is selected.
+3. Fill in the editor on the right (name, folder, format, rules, sort, limit).
+4. Click **Save**.
 
-```yaml
-name: "High Energy DJ Set"
-folder: "DJ/Sets"
-format: m3u
-filters:
-  bucket: "DJ Music"
-  bpm: { min: 125, max: 140 }
-  genre: ["House", "Techno", "Trance"]
-  key: ["8A", "9A", "10A"]
-sort_by: bpm
-```
+The playlist appears in the sidebar immediately after saving if **Show in sidebar** is checked.
 
-## Available Filter Criteria
+## Creating a Folder
 
-| Filter | Type | Example |
+Click **+ Folder**, enter a folder name, then enter the name of the first playlist inside it. Folders are a visual grouping in the tree — they map to the **Folder** field on each playlist.
+
+To add more playlists to an existing folder, create a playlist normally and type the folder name in the **Folder** field of the editor.
+
+## The Editor
+
+| Field | Description |
+|---|---|
+| **Name** | Display name for the playlist |
+| **Folder** | Tree folder (e.g. `DJ/Sets`) and the output directory for generated files |
+| **Format** | M3U or PLS |
+| **Sort by** | Field to sort matched tracks before writing (BPM, artist, title, genre, year, bitrate, date added) |
+| **Limit** | Cap the track count; combine with an order (random, BPM, artist, title, date added) |
+| **Show in sidebar** | Show this playlist in the main window sidebar for one-click filtering |
+
+## Building Rules
+
+Rules determine which tracks are included. Rules are evaluated in real time — the **matching tracks** count below the editor updates as you edit.
+
+### Match mode
+
+At the top of the rule builder, choose:
+
+- **ALL** — a track must pass every rule (logical AND)
+- **ANY** — a track passes if it matches at least one rule (logical OR)
+
+### Adding rules
+
+Click **+ Add Rule** to add a rule row. Each row has three parts:
+
+1. **Field** — what to test (see table below)
+2. **Operator** — how to compare (depends on field type)
+3. **Value** — what to compare against
+
+Click **−** to remove a rule row.
+
+### Rule groups
+
+Click **+ Add Group** to add a sub-group with its own ALL/ANY conjunction. Groups can be used to express logic like "BPM ≥ 125 AND (genre contains House OR genre contains Techno)".
+
+### Available fields
+
+| Field | Type | Notes |
 |---|---|---|
-| bucket | exact match | `"DJ Music"` |
-| genre | list (any of) | `["House", "Techno"]` |
-| bpm | range | `{ min: 120, max: 135 }` |
-| key | list (any of) | `["8A", "9A"]` |
-| artist | exact match or list | `"Aphex Twin"` |
-| year | range | `{ min: 2000, max: 2010 }` |
-| has_artwork | boolean | `true` |
-| tag_completeness | minimum value | `0.8` |
+| Title | string | Track title tag |
+| Artist | string | |
+| Album | string | |
+| Album Artist | string | |
+| Genre | string | |
+| Bucket | string | DJ crate/category tag (custom TXXX frame) |
+| Key | string | Musical key (e.g. `8A`, `Cm`) |
+| BPM | number | |
+| Year | number | |
+| Track # | number | |
+| Bitrate | number | kbps |
+| Duration (s) | number | Length in seconds |
+| Tag Completeness | number | 0.0–1.0 fraction of required tags present |
+| Has Artwork | boolean | |
+| Date Added | date | Unix timestamp of when the track was scanned |
 
-## Using the Playlist Manager
+### Operators by field type
 
-Click **Playlists** in the top navigation bar to open the Playlist Manager. The left panel shows the playlist tree organized into folders; the right panel is the editor for the selected playlist.
+**String fields**
 
-### Creating a Playlist
+| Operator | Matches if… |
+|---|---|
+| contains | field includes the value (case-insensitive) |
+| does not contain | field does not include the value |
+| is | exact match |
+| is not | not an exact match |
+| starts with | field begins with the value |
+| ends with | field ends with the value |
 
-1. Right-click in the playlist tree → **New Playlist**.
-2. Fill in the name, folder path, format (M3U or PLS), filter criteria, and sort field in the editor panel on the right.
-3. Click **Save** to store the definition.
-4. Click **Generate** to write the playlist file to disk.
+**Number fields**
 
-### Organizing with Folders
+| Operator | Matches if… |
+|---|---|
+| is | equal |
+| is not | not equal |
+| > | greater than |
+| < | less than |
+| ≥ | greater than or equal |
+| ≤ | less than or equal |
+| in range | enter two comma-separated values: `min, max` |
 
-- Click **+ Folder** to add a folder to the tree. Folders are a visual grouping — they persist when a playlist is saved into them.
-- Right-click a playlist or folder to rename or delete it.
+**Boolean fields** (Has Artwork)
 
-### Regenerating Playlists
+| Operator | Matches if… |
+|---|---|
+| is true | value is set / truthy |
+| is false | value is unset / falsy |
 
-After scanning new tracks or editing tags:
+**Date fields** (Date Added)
 
-- Select a playlist and click **Generate** to regenerate it.
-- Click **Re-generate All** to update every saved playlist at once.
+| Operator | Matches if… |
+|---|---|
+| is | exact timestamp match |
+| before | earlier than value |
+| after | later than value |
+| in last N days | added within the last N days |
 
-This is useful after importing new music, finishing a deduplication session, or running normalization.
+## Generating Playlist Files
 
-## Output Location
+After saving a playlist definition, click **Generate File…** to write it to disk. A file picker opens; the filename defaults to the playlist name with the chosen extension.
 
-The **Folder** field on each playlist is the filesystem directory where the file is written. Use an absolute path (e.g. `~/Music/Playlists/DJ/Sets`) or a path relative to your home directory. The directory is created automatically if it doesn't exist.
+If no tracks match the current rules, a notice is shown and no file is written.
+
+## Regenerating All Playlists
+
+Click **Re-generate All** to update every saved playlist at once. Playlists without a **Folder** path are skipped (nowhere to write). This is useful after:
+
+- Scanning new music into the library
+- Finishing a deduplication or tag normalization session
+- Editing BPM or key values on tracks
+
+## Sidebar Integration
+
+Playlists with **Show in sidebar** checked appear in the **Playlists** section of the main window sidebar. Clicking a playlist in the sidebar filters the Library view to show only matching tracks — no file is generated.
+
+The sidebar updates immediately when a playlist is created, saved, renamed, or deleted.
+
+## Renaming and Deleting
+
+Right-click a playlist in the tree to **Rename** or **Delete** it.
+
+## Output File Location
+
+The **Folder** field is both the tree folder name and the filesystem directory where files are written. Relative paths are resolved from the home directory. The directory is created automatically if it doesn't exist.
 
 ```
-~/Music/Playlists/
-├── DJ/
-│   └── Sets/
-│       └── High Energy DJ Set.m3u
-└── General/
-    └── Favourites.m3u
+~/DJ/Sets/
+└── High Energy.m3u
+
+~/General/
+└── Favourites.pls
 ```
