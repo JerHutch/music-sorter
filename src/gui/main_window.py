@@ -22,6 +22,7 @@ from src.gui.itunes_import import ITunesImport
 from src.gui.library_browser import LibraryBrowser
 from src.gui.playlist_manager import PlaylistManager
 from src.gui.rename_preview import RenamePreview
+from src.gui.autotag_review import AutoTagReview
 from src.gui.settings_view import SettingsView
 from src.gui.tag_editor import TagEditor
 from src.core.artwork import embed_artwork, read_artwork
@@ -29,12 +30,13 @@ from src.gui.workers import AnalyzeWorker, ArtworkWorker, AutoTagWorker, ScanWor
 
 logger = logging.getLogger(__name__)
 
-_PAGE_DASHBOARD = 0
-_PAGE_LIBRARY   = 1
-_PAGE_ORGANIZE  = 2
-_PAGE_IMPORT    = 3
-_PAGE_PLAYLISTS = 4
-_PAGE_SETTINGS  = 5
+_PAGE_DASHBOARD      = 0
+_PAGE_LIBRARY        = 1
+_PAGE_ORGANIZE       = 2
+_PAGE_IMPORT         = 3
+_PAGE_PLAYLISTS      = 4
+_PAGE_SETTINGS       = 5
+_PAGE_AUTOTAG_REVIEW = 6
 
 _DB_DIR = Path.home() / ".local" / "share" / "music-sorter"
 
@@ -132,12 +134,16 @@ class MainWindow(QMainWindow):
         # Page 5: Settings
         self._settings_view = SettingsView()
 
+        # Page 6: Auto-Tag conflict review
+        self._autotag_review = AutoTagReview()
+
         self._stack.addWidget(self._dashboard)          # 0
         self._stack.addWidget(library_split)            # 1
         self._stack.addWidget(organize_tabs)            # 2
         self._stack.addWidget(self._itunes_import)      # 3
         self._stack.addWidget(self._playlist_manager)   # 4
         self._stack.addWidget(self._settings_view)      # 5
+        self._stack.addWidget(self._autotag_review)     # 6
         h_layout.addWidget(self._stack, stretch=1)
 
         # Status bar
@@ -180,6 +186,10 @@ class MainWindow(QMainWindow):
         self._playlist_manager.playlists_changed.connect(
             lambda: self._update_sidebar_playlists(self._db.get_all_smart_playlists())
         )
+        # Wire auto-tag review apply
+        self._autotag_review.apply_requested.connect(self._on_autotag_apply)
+        # Wire full process button
+        self._library.process_all_requested.connect(self._on_full_process)
 
         self._stack.setCurrentIndex(_PAGE_DASHBOARD)
 
@@ -488,8 +498,78 @@ class MainWindow(QMainWindow):
         self._progress_bar.setValue(completed)
 
     def _on_autotag_finished(self, conflicts: list, unmatched: int) -> None:
-        # TODO: wire up conflict resolution UI in a later task
-        pass
+        self._progress_bar.setVisible(False)
+        msg = "Metadata lookup complete"
+        if unmatched:
+            msg += f" — {unmatched} track(s) had no match"
+        if conflicts:
+            msg += f", {len(conflicts)} conflict(s) found"
+        self._status_label.setText(msg)
+        self._refresh_library()
+        if conflicts:
+            self._autotag_review.load_conflicts(conflicts)
+            self._show_page(_PAGE_AUTOTAG_REVIEW)
+
+    def _on_autotag_apply(self, conflicts: list) -> None:
+        if not conflicts:
+            self._show_page(_PAGE_LIBRARY)
+            return
+        pairs: dict = {}
+        for conflict in conflicts:
+            track = next((t for t in self._all_tracks if t.file_path == conflict.file_path), None)
+            if track is None:
+                continue
+            field = conflict.field
+            value = conflict.incoming_value
+            if field in ("track_number", "year"):
+                try:
+                    setattr(track, field, int(value) if value else None)
+                except (ValueError, TypeError):
+                    setattr(track, field, None)
+            else:
+                setattr(track, field, value or None)
+            if conflict.file_path not in pairs:
+                pairs[conflict.file_path] = (track, [])
+            pairs[conflict.file_path][1].append(field)
+        if not pairs:
+            self._show_page(_PAGE_LIBRARY)
+            return
+        self._tag_worker = TagWriteWorker(list(pairs.values()), self._db)
+        self._tag_worker.finished.connect(self._on_autotag_write_finished)
+        self._tag_worker.error.connect(
+            lambda msg: self._status_label.setText(f"Auto-tag write error: {msg}")
+        )
+        self._tag_worker.start()
+
+    def _on_autotag_write_finished(self, updated: list) -> None:
+        self._status_label.setText(f"Auto-tag applied to {len(updated)} track(s)")
+        self._show_page(_PAGE_LIBRARY)
+        self._refresh_library()
+
+    def _on_full_process(self, tracks: list) -> None:
+        if not tracks:
+            return
+        # Start BPM/key analysis immediately
+        if not (self._analyze_worker and self._analyze_worker.isRunning()):
+            self._analyze_worker = AnalyzeWorker(tracks, self._db)
+            self._analyze_worker.progress.connect(self._on_analyze_progress)
+            self._analyze_worker.finished.connect(self._on_analyze_finished)
+            self._analyze_worker.error.connect(
+                lambda msg: self._status_label.setText(f"Analysis error: {msg}")
+            )
+            self._analyze_worker.start()
+        # Start artwork lookup immediately
+        if not (self._artwork_worker and self._artwork_worker.isRunning()):
+            self._artwork_worker = ArtworkWorker(tracks)
+            self._artwork_worker.finished.connect(self._on_artwork_scan_track_done)
+            self._artwork_worker.done.connect(self._refresh_library)
+            self._artwork_worker.status_message.connect(
+                lambda msg: self.statusBar().showMessage(msg, 5000)
+            )
+            self._artwork_worker.start()
+        # Start metadata lookup (navigates to review page when done)
+        self._on_auto_tag(tracks)
+        self._status_label.setText(f"Processing {len(tracks)} track(s)…")
 
     def _on_analyze(self, tracks: list[Track]) -> None:
         """Run BPM/key detection on selected tracks."""
