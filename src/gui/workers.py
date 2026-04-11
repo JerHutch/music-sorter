@@ -8,6 +8,7 @@ import src.core.artwork as _artwork_mod
 from src.core.analyzer import detect_bpm, detect_key
 from src.core.database import Database
 from src.core.deduplicator import find_duplicates
+from src.core.fingerprint import generate_fingerprint, lookup_metadata
 from src.core.itunes import match_itunes_to_files, parse_itunes_xml, resolve_conflicts as _resolve_conflicts
 from src.core.models import DupeGroup, RenameOperation, TagConflict, Track
 from src.core.organizer import execute_rename_plan
@@ -228,6 +229,78 @@ class AnalyzeWorker(QThread):
                 logger.exception("AnalyzeWorker: failed on %s", track.file_path)
             self.progress.emit(i, total)
         self.finished.emit(updated)
+
+
+_AUTOTAG_FIELDS = ["title", "artist", "album", "album_artist", "track_number", "year"]
+
+
+class AutoTagWorker(QThread):
+    """Fingerprints tracks, looks up metadata via AcoustID + MusicBrainz, and builds
+    a list of TagConflict objects for fields that differ from existing tag values.
+    """
+
+    progress = Signal(int, int)   # completed, total
+    finished = Signal(list, int)  # list[TagConflict], unmatched_count
+    error = Signal(str)
+
+    def __init__(self, tracks: list[Track], db: Database):
+        super().__init__()
+        self._tracks = tracks
+        self._db = db
+
+    def run(self) -> None:
+        from src.core.models import TagConflict
+        total = len(self._tracks)
+        conflicts: list[TagConflict] = []
+        unmatched = 0
+
+        for i, track in enumerate(self._tracks, 1):
+            try:
+                fp = generate_fingerprint(track.file_path)
+                if fp is None:
+                    unmatched += 1
+                    track.acoustid_no_match = True
+                    self._upsert(track)
+                    self.progress.emit(i, total)
+                    continue
+
+                meta = lookup_metadata(fp, track.duration)
+                if meta is None:
+                    unmatched += 1
+                    track.acoustid_no_match = True
+                    self._upsert(track)
+                    self.progress.emit(i, total)
+                    continue
+
+                track.acoustid_no_match = False
+                self._upsert(track)
+
+                for field in _AUTOTAG_FIELDS:
+                    found_val = meta.get(field)
+                    if found_val is None:
+                        continue
+                    current_val = getattr(track, field, None)
+                    found_str = str(found_val)
+                    current_str = str(current_val) if current_val is not None else ""
+                    if found_str != current_str:
+                        conflicts.append(TagConflict(
+                            file_path=track.file_path,
+                            field=field,
+                            local_value=current_str,
+                            incoming_value=found_str,
+                        ))
+            except Exception:
+                logger.exception("AutoTagWorker: failed on %s", track.file_path)
+            self.progress.emit(i, total)
+
+        self.finished.emit(conflicts, unmatched)
+
+    def _upsert(self, track: Track) -> None:
+        try:
+            mtime = track.file_path.stat().st_mtime
+        except OSError:
+            mtime = 0.0
+        upsert_track_in_db(self._db, track, file_mtime=mtime)
 
 
 class ArtworkWorker(QThread):
