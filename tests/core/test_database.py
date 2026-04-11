@@ -195,3 +195,45 @@ def test_delete_smart_playlist(tmp_path):
     db.upsert_smart_playlist(SmartPlaylist(name="Gone", rules=[]))
     db.delete_smart_playlist("Gone")
     assert db.get_all_smart_playlists() == []
+
+
+def test_acoustid_no_match_column_roundtrip(db):
+    track = _make_track(acoustid_no_match=True)
+    db.upsert_track(track, file_mtime=1000.0)
+    result = db.get_track(Path("/music/song.mp3"))
+    assert result is not None
+    assert result.acoustid_no_match is True
+
+
+def test_acoustid_no_match_defaults_false(db):
+    track = _make_track()
+    db.upsert_track(track, file_mtime=1000.0)
+    result = db.get_track(Path("/music/song.mp3"))
+    assert result is not None
+    assert result.acoustid_no_match is False
+
+
+def test_acoustid_no_match_migration(tmp_path):
+    """Opening a DB that was created without the column should add it transparently."""
+    import sqlite3
+    db_path = tmp_path / "old.db"
+    # Create a DB without the column
+    conn = sqlite3.connect(str(db_path))
+    conn.execute("""CREATE TABLE tracks (
+        file_path TEXT PRIMARY KEY, file_size INTEGER NOT NULL,
+        bitrate INTEGER NOT NULL, duration REAL NOT NULL,
+        title TEXT, artist TEXT, album_artist TEXT, album TEXT,
+        track_number INTEGER, disc_number INTEGER, year INTEGER, genre TEXT,
+        bpm REAL, key_ TEXT, bucket TEXT, fingerprint TEXT,
+        tag_completeness REAL NOT NULL DEFAULT 0.0, tag_source TEXT,
+        has_artwork INTEGER NOT NULL DEFAULT 0, file_mtime REAL NOT NULL DEFAULT 0.0,
+        date_added REAL
+    )""")
+    conn.commit()
+    conn.close()
+    # Opening via Database should migrate it
+    from src.core.database import Database
+    db2 = Database(db_path)
+    row = db2._conn.execute("PRAGMA table_info(tracks)").fetchall()
+    col_names = [r[1] for r in row]
+    assert "acoustid_no_match" in col_names

@@ -36,7 +36,8 @@ CREATE TABLE IF NOT EXISTS tracks (
     tag_source     TEXT,
     has_artwork    INTEGER NOT NULL DEFAULT 0,
     file_mtime     REAL NOT NULL DEFAULT 0.0,
-    date_added     REAL
+    date_added     REAL,
+    acoustid_no_match INTEGER NOT NULL DEFAULT 0
 )
 """
 
@@ -104,6 +105,7 @@ def _row_to_track(row: sqlite3.Row) -> Track:
         tag_source=row["tag_source"],
         has_artwork=bool(row["has_artwork"]),
         date_added=row["date_added"],
+        acoustid_no_match=bool(row["acoustid_no_match"]),
     )
 
 
@@ -150,6 +152,11 @@ class Database:
             cur.execute("ALTER TABLE tracks ADD COLUMN date_added REAL")
         except sqlite3.OperationalError:
             pass  # column already exists
+        # Migrate: add acoustid_no_match to existing tracks tables
+        try:
+            cur.execute("ALTER TABLE tracks ADD COLUMN acoustid_no_match INTEGER NOT NULL DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass  # column already exists
         # Migrate: drop old simple playlists table
         cur.execute("DROP TABLE IF EXISTS playlists")
         self._fts_available = False
@@ -172,13 +179,15 @@ class Database:
             title, artist, album_artist, album,
             track_number, disc_number, year, genre,
             bpm, key_, bucket, fingerprint,
-            tag_completeness, tag_source, has_artwork, file_mtime, date_added
+            tag_completeness, tag_source, has_artwork, file_mtime, date_added,
+            acoustid_no_match
         ) VALUES (
             :file_path, :file_size, :bitrate, :duration,
             :title, :artist, :album_artist, :album,
             :track_number, :disc_number, :year, :genre,
             :bpm, :key_, :bucket, :fingerprint,
-            :tag_completeness, :tag_source, :has_artwork, :file_mtime, :date_added
+            :tag_completeness, :tag_source, :has_artwork, :file_mtime, :date_added,
+            :acoustid_no_match
         )
         ON CONFLICT(file_path) DO UPDATE SET
             file_size        = excluded.file_size,
@@ -199,7 +208,8 @@ class Database:
             tag_completeness = excluded.tag_completeness,
             tag_source       = excluded.tag_source,
             has_artwork      = excluded.has_artwork,
-            file_mtime       = excluded.file_mtime
+            file_mtime       = excluded.file_mtime,
+            acoustid_no_match = excluded.acoustid_no_match
         """
         params = {
             "file_path": str(track.file_path),
@@ -223,6 +233,7 @@ class Database:
             "has_artwork": int(track.has_artwork),
             "file_mtime": file_mtime,
             "date_added": track.date_added if track.date_added is not None else time.time(),
+            "acoustid_no_match": int(track.acoustid_no_match),
         }
         try:
             with self._lock:

@@ -69,6 +69,7 @@ class Track:
     tag_completeness: float = 0.0
     tag_source: str | None = None
     has_artwork: bool = False
+    acoustid_no_match: bool = False
     date_added: float | None = None  # Unix timestamp (time.time()) set on first scan
 
     def compute_completeness(self, required_tags: list[str]) -> float:
