@@ -29,6 +29,7 @@ _COLUMN_HEADERS: dict[str, str] = {
     "tag_completeness": "Tags",
     "tag_source": "Source",
     "has_artwork": "Art",
+    "acoustid_no_match": "No Match",
 }
 
 _DEFAULT_VISIBLE = ["title", "artist", "album", "genre", "bpm", "key", "bitrate", "tag_completeness"]
@@ -57,6 +58,8 @@ def _track_cell_value(track: Track, col: str) -> str:
         return f"{val // 1024} KB"
     if col == "has_artwork":
         return "Yes" if val else "No"
+    if col == "acoustid_no_match":
+        return "✓" if val else ""
     return str(val)
 
 
@@ -65,9 +68,10 @@ class LibraryBrowser(QWidget):
 
     selection_changed = Signal(list)   # emits list[Track] when selection changes
     columns_changed = Signal(list)     # emits list[str] when user reorders/toggles
-    auto_tag_requested = Signal(list)  # emits list[Track] — fill missing BPM/key
+    auto_tag_requested = Signal(list)  # emits list[Track] — AcoustID/MusicBrainz metadata lookup
     analyze_requested = Signal(list)   # emits list[Track] — overwrite BPM/key
     batch_edit_requested = Signal(list)  # emits list[Track] — open tag editor
+    process_all_requested = Signal(list)  # emits list[Track] — run auto-tag + analyze + artwork
 
     def __init__(self, visible_columns: list[str] | None = None, parent=None):
         super().__init__(parent)
@@ -93,7 +97,8 @@ class LibraryBrowser(QWidget):
         self._btn_autotag = QPushButton("Auto-Tag Selected")
         self._btn_batch = QPushButton("Batch Edit")
         self._btn_analyze = QPushButton("Analyze")
-        for btn in (self._btn_autotag, self._btn_batch, self._btn_analyze):
+        self._btn_full_process = QPushButton("Full Process")
+        for btn in (self._btn_autotag, self._btn_batch, self._btn_analyze, self._btn_full_process):
             btn.setEnabled(False)
             toolbar.addWidget(btn)
         layout.addWidget(toolbar)
@@ -146,6 +151,9 @@ class LibraryBrowser(QWidget):
         )
         self._btn_analyze.clicked.connect(
             lambda: self.analyze_requested.emit(self.selected_tracks())
+        )
+        self._btn_full_process.clicked.connect(
+            lambda: self.process_all_requested.emit(self.selected_tracks())
         )
 
     # ------------------------------------------------------------------
@@ -281,4 +289,5 @@ class LibraryBrowser(QWidget):
         self._btn_autotag.setEnabled(has_selection)
         self._btn_batch.setEnabled(has_selection)
         self._btn_analyze.setEnabled(has_selection)
+        self._btn_full_process.setEnabled(has_selection)
         self.selection_changed.emit(tracks)
