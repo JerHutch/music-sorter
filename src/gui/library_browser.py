@@ -59,7 +59,7 @@ def _track_cell_value(track: Track, col: str) -> str:
     if col == "has_artwork":
         return "Yes" if val else "No"
     if col == "acoustid_no_match":
-        return "✓" if val else ""
+        return "Yes" if val else "No"
     return str(val)
 
 

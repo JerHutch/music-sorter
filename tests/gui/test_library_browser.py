@@ -1,7 +1,7 @@
 from pathlib import Path
 import pytest
 from src.core.models import Track
-from src.gui.library_browser import LibraryBrowser
+from src.gui.library_browser import LibraryBrowser, _track_cell_value
 
 
 def _make_track(title="T", artist="A", bucket=None):
@@ -113,3 +113,50 @@ def test_status_label_search_combined_with_bucket_filter(qtbot):
     browser._search_box.setText("Alpha")
     assert browser.visible_row_count() == 1
     assert browser.status_text() == "1 track"
+
+
+def test_process_all_requested_emits_selected_tracks(qtbot):
+    t1 = _make_track("Song A", "DJ X")
+    t2 = _make_track("Song B", "DJ Y")
+    browser = LibraryBrowser(visible_columns=["title", "artist"])
+    qtbot.addWidget(browser)
+    browser.show()
+    browser.load_tracks([t1, t2])
+
+    received = []
+    browser.process_all_requested.connect(received.append)
+
+    # Select all rows
+    browser._table.selectAll()
+    browser._btn_full_process.click()
+
+    assert len(received) == 1
+    emitted_tracks = received[0]
+    assert len(emitted_tracks) == 2
+    assert set(t.title for t in emitted_tracks) == {"Song A", "Song B"}
+
+
+def test_btn_full_process_enabled_iff_selection(qtbot):
+    t1 = _make_track("Song A", "DJ X")
+    browser = LibraryBrowser(visible_columns=["title"])
+    qtbot.addWidget(browser)
+    browser.show()
+    browser.load_tracks([t1])
+
+    assert not browser._btn_full_process.isEnabled()
+
+    browser._table.selectAll()
+    assert browser._btn_full_process.isEnabled()
+
+    browser._table.clearSelection()
+    assert not browser._btn_full_process.isEnabled()
+
+
+def test_acoustid_no_match_renders_as_yes(qtbot):
+    t = _make_track()
+    t.acoustid_no_match = True
+    assert _track_cell_value(t, "acoustid_no_match") == "Yes"
+
+    t2 = _make_track()
+    t2.acoustid_no_match = False
+    assert _track_cell_value(t2, "acoustid_no_match") == "No"
