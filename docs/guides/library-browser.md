@@ -49,3 +49,18 @@ Available columns include: title, artist, album artist, album, track number, dis
 - `Ctrl+A` to select all visible tracks.
 
 Selecting one or more tracks opens the **Tag Editor** panel on the right side of the Library view. The panel closes automatically when the selection is cleared.
+
+## Toolbar Buttons
+
+These buttons act on the currently selected tracks.
+
+| Button | What it does |
+|---|---|
+| **Auto-Tag Selected** | Fingerprints each selected track via Chromaprint, queries AcoustID and MusicBrainz, then opens a conflict review page to apply title, artist, album, album artist, track number, and year. |
+| **Analyze** | Detects BPM and key via librosa and overwrites existing values immediately. No review step. |
+| **Full Process** | Runs Analyze and artwork lookup immediately in the background, and Auto-Tag concurrently. Shows the conflict review page when the metadata lookup finishes. |
+| **Batch Edit** | Opens the tag editor panel pre-loaded with all selected tracks for manual editing. |
+
+## No Match Column
+
+The **No Match** column (hidden by default — right-click the header to show it) displays `Yes` for tracks where Auto-Tag or Full Process ran but found no AcoustID match. Sort by this column to bring unmatched tracks to the top for manual review.

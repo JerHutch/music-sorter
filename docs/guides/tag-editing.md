@@ -56,3 +56,21 @@ For tracks with unknown or incorrect metadata, Music Sorter can look up tags via
 4. Results (title, artist, album, MusicBrainz IDs) are presented for review before any tags are written.
 
 This requires the `chromaprint`/`fpcalc` system binary to be installed. See the [main README](../../README.md#requirements) for install instructions.
+
+## Auto-Tag Conflict Review
+
+After running **Auto-Tag Selected** or **Full Process**, if any looked-up values differ from existing tags, the conflict review page opens automatically.
+
+Each row shows the track filename, the field being compared, the current value in the file, and the value found via MusicBrainz.
+
+**Resolution column defaults:**
+- Empty current value → **Use Found** (safe to apply)
+- Non-empty current value → **Keep** (preserves existing data)
+
+**Bulk controls:**
+- **Use Found for All** — sets every row to Use Found
+- **Keep All** — sets every row to Keep
+
+**Apply Changes** writes all rows set to Use Found back to the file and database, then returns to the library. **Skip All** discards the lookup results and returns to the library without writing anything.
+
+Tracks where no AcoustID match was found are silently skipped and marked in the **No Match** column of the library browser.
