@@ -18,6 +18,12 @@ def test_has_artwork_true_after_embed(untagged_mp3):
     assert has_artwork(untagged_mp3) is True
 
 @patch("src.core.artwork.musicbrainzngs")
+def test_search_cover_art_empty_artist_and_album_returns_none(mock_mb):
+    result = search_cover_art("", "")
+    mock_mb.search_releases.assert_not_called()
+    assert result is None
+
+@patch("src.core.artwork.musicbrainzngs")
 def test_search_cover_art_success(mock_mb):
     mock_mb.search_releases.return_value = {"release-list": [{"id": "release-123", "score": "100"}]}
     mock_mb.get_image_front.return_value = b"\xff\xd8fake_image_data"

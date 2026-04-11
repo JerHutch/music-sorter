@@ -74,6 +74,8 @@ def embed_artwork(path: Path, image_data: bytes, dry_run: bool = False) -> None:
 def search_cover_art(artist: str, album: str) -> bytes | None:
     if musicbrainzngs is None:
         return None
+    if not artist and not album:
+        return None
     logger.info("Searching MusicBrainz for artwork: %s — %s", artist, album)
     try:
         results = musicbrainzngs.search_releases(artist=artist, release=album, limit=5)
