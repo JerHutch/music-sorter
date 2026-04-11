@@ -50,3 +50,59 @@ def test_compute_similarity_identical():
 def test_compute_similarity_different():
     sim = compute_similarity("AQADtNIyRUkS", "BBBBBZZZZZZZ")
     assert 0.0 <= sim <= 1.0
+
+
+@patch("src.core.fingerprint.acoustid.match")
+@patch("src.core.fingerprint.musicbrainzngs")
+def test_lookup_metadata_fetches_musicbrainz_details(mock_mb, mock_match):
+    mock_match.return_value = iter([
+        (0.95, "recording-id-123", "Blue Monday", "New Order"),
+    ])
+    mock_mb.get_recording_by_id.return_value = {
+        "recording": {
+            "artist-credit": [{"artist": {"name": "New Order"}}],
+            "release-list": [{
+                "title": "Power, Corruption & Lies",
+                "date": "1983-05-02",
+                "artist-credit": [{"artist": {"name": "New Order"}}],
+                "medium-list": [{
+                    "track-list": [{"number": "1", "position": "1"}]
+                }],
+            }],
+        }
+    }
+    result = lookup_metadata("fake-fingerprint", 240.0)
+    assert result is not None
+    assert result["album"] == "Power, Corruption & Lies"
+    assert result["album_artist"] == "New Order"
+    assert result["year"] == 1983
+    assert result["track_number"] == 1
+
+
+@patch("src.core.fingerprint.acoustid.match")
+@patch("src.core.fingerprint.musicbrainzngs")
+def test_lookup_metadata_graceful_when_mb_returns_no_releases(mock_mb, mock_match):
+    mock_match.return_value = iter([
+        (0.95, "recording-id-123", "Blue Monday", "New Order"),
+    ])
+    mock_mb.get_recording_by_id.return_value = {
+        "recording": {"artist-credit": [], "release-list": []}
+    }
+    result = lookup_metadata("fake-fingerprint", 240.0)
+    assert result is not None
+    assert result["title"] == "Blue Monday"
+    assert result["album"] is None
+    assert result["year"] is None
+
+
+@patch("src.core.fingerprint.acoustid.match")
+@patch("src.core.fingerprint.musicbrainzngs")
+def test_lookup_metadata_graceful_when_mb_raises(mock_mb, mock_match):
+    mock_match.return_value = iter([
+        (0.95, "recording-id-123", "Blue Monday", "New Order"),
+    ])
+    mock_mb.get_recording_by_id.side_effect = Exception("network error")
+    result = lookup_metadata("fake-fingerprint", 240.0)
+    assert result is not None
+    assert result["title"] == "Blue Monday"
+    assert result["album"] is None
