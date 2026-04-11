@@ -484,6 +484,7 @@ class MainWindow(QMainWindow):
         self._autotag_worker.start()
 
     def _on_autotag_progress(self, completed: int, total: int) -> None:
+        self._progress_bar.setRange(0, total)
         self._progress_bar.setValue(completed)
 
     def _on_autotag_finished(self, conflicts: list, unmatched: int) -> None:
@@ -651,6 +652,7 @@ class MainWindow(QMainWindow):
             self._scan_worker,
             self._tag_worker,
             self._analyze_worker,
+            self._autotag_worker,
             self._artwork_worker,
             getattr(self._dupe_resolver, "_worker", None),
             getattr(self._rename_preview, "_worker", None),
