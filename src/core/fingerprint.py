@@ -17,7 +17,7 @@ try:
 except ImportError:
     musicbrainzngs = None
 
-_API_KEY = "ACOUSTID_API_KEY"
+_API_KEY = ""  # configured via settings (acoustid_api_key in config)
 
 
 def generate_fingerprint(path: Path) -> str | None:
@@ -98,8 +98,10 @@ def lookup_metadata(fingerprint: str, duration: float, api_key: str = _API_KEY) 
     """Look up track metadata via AcoustID API, then fetch extended details from MusicBrainz."""
     if acoustid is None:
         return None
+    if not api_key:
+        return None
     try:
-        results = acoustid.match(api_key, None, None, fingerprint=fingerprint, duration=int(duration))
+        results = acoustid.lookup(api_key, fingerprint, int(duration))
         for score, recording_id, title, artist in results:
             mb_details = _fetch_musicbrainz_details(recording_id)
             return {

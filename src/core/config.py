@@ -113,6 +113,14 @@ class Config:
         self._data["itunes_xml_path"] = str(path) if path else None
 
     @property
+    def acoustid_api_key(self) -> str:
+        return self._data.get("acoustid_api_key", "")
+
+    @acoustid_api_key.setter
+    def acoustid_api_key(self, key: str) -> None:
+        self._data["acoustid_api_key"] = key
+
+    @property
     def required_tags(self) -> dict:
         return self._data.get("required_tags", {})
 

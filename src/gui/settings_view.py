@@ -65,6 +65,20 @@ class SettingsView(QWidget):
 
         layout.addWidget(itunes_group)
 
+        # --- AcoustID ---
+        acoustid_group = QGroupBox("AcoustID")
+        acoustid_layout = QHBoxLayout(acoustid_group)
+
+        self._acoustid_key = QLineEdit()
+        self._acoustid_key.setPlaceholderText("Register at acoustid.org to get a key…")
+        self._acoustid_key.setEchoMode(QLineEdit.EchoMode.Password)
+        acoustid_layout.addWidget(QLabel("API Key:"))
+        acoustid_layout.addWidget(self._acoustid_key)
+
+        self._acoustid_key.textChanged.connect(lambda: self.settings_changed.emit())
+
+        layout.addWidget(acoustid_group)
+
         # --- Actions ---
         actions_group = QGroupBox("Actions")
         actions_layout = QVBoxLayout(actions_group)
@@ -85,6 +99,9 @@ class SettingsView(QWidget):
 
         if config.itunes_xml_path:
             self._itunes_path.setText(str(config.itunes_xml_path))
+
+        if config.acoustid_api_key:
+            self._acoustid_key.setText(str(config.acoustid_api_key))
 
     # ------------------------------------------------------------------
     def _add_directory(self) -> None:
@@ -120,3 +137,6 @@ class SettingsView(QWidget):
     def get_itunes_path(self) -> Path | None:
         text = self._itunes_path.text().strip()
         return Path(text) if text else None
+
+    def get_acoustid_api_key(self) -> str:
+        return self._acoustid_key.text().strip()

@@ -339,6 +339,7 @@ class MainWindow(QMainWindow):
     def _save_config(self) -> None:
         self._config.source_directories = self._settings_view.get_source_directories()
         self._config.itunes_xml_path = self._settings_view.get_itunes_path()
+        self._config.acoustid_api_key = self._settings_view.get_acoustid_api_key()
         self._config.save(self._config_path)
 
     # ------------------------------------------------------------------
@@ -481,7 +482,7 @@ class MainWindow(QMainWindow):
             return
         if self._autotag_worker and self._autotag_worker.isRunning():
             return
-        self._autotag_worker = AutoTagWorker(tracks, self._db)
+        self._autotag_worker = AutoTagWorker(tracks, self._db, api_key=self._config.acoustid_api_key)
         self._autotag_worker.progress.connect(self._on_autotag_progress)
         self._autotag_worker.finished.connect(self._on_autotag_finished)
         self._autotag_worker.error.connect(

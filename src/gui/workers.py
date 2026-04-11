@@ -233,10 +233,11 @@ class AutoTagWorker(QThread):
     finished = Signal(list, int)  # list[TagConflict], unmatched_count
     error = Signal(str)
 
-    def __init__(self, tracks: list[Track], db: Database):
+    def __init__(self, tracks: list[Track], db: Database, api_key: str = ""):
         super().__init__()
         self._tracks = tracks
         self._db = db
+        self._api_key = api_key
 
     def run(self) -> None:
         total = len(self._tracks)
@@ -253,7 +254,7 @@ class AutoTagWorker(QThread):
                         self.progress.emit(i, total)
                         continue
 
-                    meta = lookup_metadata(fp, track.duration)
+                    meta = lookup_metadata(fp, track.duration, api_key=self._api_key)
                     if meta is None:
                         unmatched += 1
                         track.acoustid_no_match = True

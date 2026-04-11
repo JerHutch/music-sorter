@@ -23,16 +23,21 @@ def test_generate_fingerprint_returns_none_for_invalid(tmp_path):
     assert fp is None
 
 
-@patch("src.core.fingerprint.acoustid.match")
+def test_lookup_metadata_returns_none_for_empty_api_key():
+    result = lookup_metadata("fake-fingerprint", 240.0, api_key="")
+    assert result is None
+
+
+@patch("src.core.fingerprint.acoustid.lookup")
 @patch("src.core.fingerprint.musicbrainzngs")
-def test_lookup_metadata_success(mock_mb, mock_match):
-    mock_match.return_value = iter([
+def test_lookup_metadata_success(mock_mb, mock_lookup):
+    mock_lookup.return_value = iter([
         (0.95, "recording-id-123", "Blue Monday", "New Order"),
     ])
     mock_mb.get_recording_by_id.return_value = {
         "recording": {"artist-credit": [], "release-list": []}
     }
-    result = lookup_metadata("fake-fingerprint", 240.0)
+    result = lookup_metadata("fake-fingerprint", 240.0, api_key="test-key")
     assert result is not None
     assert result["title"] == "Blue Monday"
     assert result["artist"] == "New Order"
@@ -41,10 +46,10 @@ def test_lookup_metadata_success(mock_mb, mock_match):
     assert result["year"] is None
 
 
-@patch("src.core.fingerprint.acoustid.match")
-def test_lookup_metadata_no_results(mock_match):
-    mock_match.return_value = iter([])
-    result = lookup_metadata("fake-fingerprint", 240.0)
+@patch("src.core.fingerprint.acoustid.lookup")
+def test_lookup_metadata_no_results(mock_lookup):
+    mock_lookup.return_value = iter([])
+    result = lookup_metadata("fake-fingerprint", 240.0, api_key="test-key")
     assert result is None
 
 
@@ -58,10 +63,10 @@ def test_compute_similarity_different():
     assert 0.0 <= sim <= 1.0
 
 
-@patch("src.core.fingerprint.acoustid.match")
+@patch("src.core.fingerprint.acoustid.lookup")
 @patch("src.core.fingerprint.musicbrainzngs")
-def test_lookup_metadata_fetches_musicbrainz_details(mock_mb, mock_match):
-    mock_match.return_value = iter([
+def test_lookup_metadata_fetches_musicbrainz_details(mock_mb, mock_lookup):
+    mock_lookup.return_value = iter([
         (0.95, "recording-id-123", "Blue Monday", "New Order"),
     ])
     mock_mb.get_recording_by_id.return_value = {
@@ -77,7 +82,7 @@ def test_lookup_metadata_fetches_musicbrainz_details(mock_mb, mock_match):
             }],
         }
     }
-    result = lookup_metadata("fake-fingerprint", 240.0)
+    result = lookup_metadata("fake-fingerprint", 240.0, api_key="test-key")
     assert result is not None
     assert result["album"] == "Power, Corruption & Lies"
     assert result["album_artist"] == "New Order"
@@ -85,30 +90,30 @@ def test_lookup_metadata_fetches_musicbrainz_details(mock_mb, mock_match):
     assert result["track_number"] == 1
 
 
-@patch("src.core.fingerprint.acoustid.match")
+@patch("src.core.fingerprint.acoustid.lookup")
 @patch("src.core.fingerprint.musicbrainzngs")
-def test_lookup_metadata_graceful_when_mb_returns_no_releases(mock_mb, mock_match):
-    mock_match.return_value = iter([
+def test_lookup_metadata_graceful_when_mb_returns_no_releases(mock_mb, mock_lookup):
+    mock_lookup.return_value = iter([
         (0.95, "recording-id-123", "Blue Monday", "New Order"),
     ])
     mock_mb.get_recording_by_id.return_value = {
         "recording": {"artist-credit": [], "release-list": []}
     }
-    result = lookup_metadata("fake-fingerprint", 240.0)
+    result = lookup_metadata("fake-fingerprint", 240.0, api_key="test-key")
     assert result is not None
     assert result["title"] == "Blue Monday"
     assert result["album"] is None
     assert result["year"] is None
 
 
-@patch("src.core.fingerprint.acoustid.match")
+@patch("src.core.fingerprint.acoustid.lookup")
 @patch("src.core.fingerprint.musicbrainzngs")
-def test_lookup_metadata_graceful_when_mb_raises(mock_mb, mock_match):
-    mock_match.return_value = iter([
+def test_lookup_metadata_graceful_when_mb_raises(mock_mb, mock_lookup):
+    mock_lookup.return_value = iter([
         (0.95, "recording-id-123", "Blue Monday", "New Order"),
     ])
     mock_mb.get_recording_by_id.side_effect = Exception("network error")
-    result = lookup_metadata("fake-fingerprint", 240.0)
+    result = lookup_metadata("fake-fingerprint", 240.0, api_key="test-key")
     assert result is not None
     assert result["title"] == "Blue Monday"
     assert result["album"] is None

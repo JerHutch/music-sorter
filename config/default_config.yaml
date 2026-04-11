@@ -1,5 +1,6 @@
 source_directories: []
 itunes_xml_path: null
+acoustid_api_key: ""  # register at https://acoustid.org/login to get a key
 
 required_tags:
   global:
