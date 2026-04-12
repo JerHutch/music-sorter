@@ -297,6 +297,8 @@ class MainWindow(QMainWindow):
         if index == _PAGE_ORGANIZE:
             self._rename_preview.set_tracks(self._all_tracks)
             self._rename_preview.set_patterns(self._config.rename_patterns)
+            self._rename_preview.set_config(self._config)
+            self._rename_preview.set_playlists(self._db.get_all_smart_playlists())
         elif index == _PAGE_IMPORT:
             self._itunes_import.set_tracks(self._all_tracks, self._config.source_directories)
         elif index == _PAGE_PLAYLISTS:
@@ -550,18 +552,28 @@ class MainWindow(QMainWindow):
     def _on_full_process(self, tracks: list) -> None:
         if not tracks:
             return
-        # Start BPM/key analysis immediately
-        if not (self._analyze_worker and self._analyze_worker.isRunning()):
-            self._analyze_worker = AnalyzeWorker(tracks, self._db)
+        analysis_cfg = self._config.analysis
+        # Start BPM/key analysis — only for buckets where bpm or key is enabled
+        analyze_tracks = [
+            t for t in tracks
+            if analysis_cfg.get(t.bucket or "", {}).get("bpm", False)
+            or analysis_cfg.get(t.bucket or "", {}).get("key", False)
+        ]
+        if analyze_tracks and not (self._analyze_worker and self._analyze_worker.isRunning()):
+            self._analyze_worker = AnalyzeWorker(analyze_tracks, self._db)
             self._analyze_worker.progress.connect(self._on_analyze_progress)
             self._analyze_worker.finished.connect(self._on_analyze_finished)
             self._analyze_worker.error.connect(
                 lambda msg: self._status_label.setText(f"Analysis error: {msg}")
             )
             self._analyze_worker.start()
-        # Start artwork lookup immediately
-        if not (self._artwork_worker and self._artwork_worker.isRunning()):
-            self._artwork_worker = ArtworkWorker(tracks)
+        # Start artwork lookup — only for buckets where artwork is enabled
+        artwork_tracks = [
+            t for t in tracks
+            if analysis_cfg.get(t.bucket or "", {}).get("artwork", False)
+        ]
+        if artwork_tracks and not (self._artwork_worker and self._artwork_worker.isRunning()):
+            self._artwork_worker = ArtworkWorker(artwork_tracks)
             self._artwork_worker.finished.connect(self._on_artwork_scan_track_done)
             self._artwork_worker.done.connect(self._refresh_library)
             self._artwork_worker.status_message.connect(
