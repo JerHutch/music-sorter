@@ -1,6 +1,6 @@
 from pathlib import Path
 import pytest
-from src.core.models import Track, RenameOperation, SmartPlaylist
+from src.core.models import Track, RenameOperation, SmartPlaylist, SimpleRule
 from src.core.config import Config
 from src.gui.rename_preview import RenamePreview
 
@@ -100,3 +100,26 @@ def test_scope_all_tracks_loads_default_pattern(qtbot):
     view.select_scope("All Tracks")
     assert view.active_track_count() == 1
     assert view.current_pattern() == "{title}.mp3"
+
+
+def test_scope_playlist_filters_tracks(qtbot):
+    """Selecting a playlist scope filters tracks to those matching the playlist rules."""
+    from src.core.playlist import evaluate_playlist as _ep  # verify the same logic
+    view = RenamePreview()
+    qtbot.addWidget(view)
+    tracks = [
+        _track_bucket("/tmp/a.mp3", "DJ Music"),
+        _track_bucket("/tmp/b.mp3", "General"),
+        _track_bucket("/tmp/c.mp3", "DJ Music"),
+    ]
+    # Playlist matches only "DJ Music" bucket tracks
+    playlist = SmartPlaylist(
+        name="My DJ Playlist",
+        rules=[SimpleRule(field="bucket", operator="is", value="DJ Music")],
+    )
+    config = _make_config({"default": "{title}.mp3"})
+    view.set_tracks(tracks)
+    view.set_config(config)
+    view.set_playlists([playlist])
+    view.select_scope("My DJ Playlist")
+    assert view.active_track_count() == 2

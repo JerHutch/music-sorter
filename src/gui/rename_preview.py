@@ -171,12 +171,16 @@ class RenamePreview(QWidget):
             if buckets:
                 self._scope_combo.insertSeparator(self._scope_combo.count())
                 for name in buckets:
+                    idx = self._scope_combo.count()
                     self._scope_combo.addItem(name)
+                    self._scope_combo.setItemData(idx, "bucket")
 
         if self._playlists:
             self._scope_combo.insertSeparator(self._scope_combo.count())
             for pl in self._playlists:
+                idx = self._scope_combo.count()
                 self._scope_combo.addItem(pl.name)
+                self._scope_combo.setItemData(idx, "playlist")
 
         # Restore previous selection if still present, else fall back to All Tracks
         idx = self._scope_combo.findText(current_text)
@@ -187,6 +191,7 @@ class RenamePreview(QWidget):
     def _on_scope_changed(self) -> None:
         """Filter tracks and load pattern based on current scope selection."""
         text = self._scope_combo.currentText()
+        scope_type = self._scope_combo.currentData()
 
         if not text or text == "All Tracks":
             self._active_tracks = list(self._tracks)
@@ -194,7 +199,7 @@ class RenamePreview(QWidget):
                 default_pat = self._config.rename_patterns.get("default", "")
                 if default_pat:
                     self._pattern_input.setText(default_pat)
-        elif self._config and text in self._config.rename_patterns:
+        elif scope_type == "bucket":
             # Bucket selected
             self._active_tracks = [t for t in self._tracks if t.bucket == text]
             pattern = self._config.get_rename_pattern(text)
