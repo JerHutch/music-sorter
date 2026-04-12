@@ -41,6 +41,7 @@ class RenamePreview(QWidget):
         self._patterns: dict[str, str] = {}
         self._config: Config | None = None
         self._playlists: list[SmartPlaylist] = []
+        self._scope_types: dict[int, str] = {}  # combo index → "bucket" | "playlist"
         self._build_ui()
 
     # ------------------------------------------------------------------
@@ -164,6 +165,7 @@ class RenamePreview(QWidget):
         current_text = self._scope_combo.currentText()
         self._scope_combo.blockSignals(True)
         self._scope_combo.clear()
+        self._scope_types = {}
         self._scope_combo.addItem("All Tracks")
 
         if self._config:
@@ -173,14 +175,14 @@ class RenamePreview(QWidget):
                 for name in buckets:
                     idx = self._scope_combo.count()
                     self._scope_combo.addItem(name)
-                    self._scope_combo.setItemData(idx, "bucket")
+                    self._scope_types[idx] = "bucket"
 
         if self._playlists:
             self._scope_combo.insertSeparator(self._scope_combo.count())
             for pl in self._playlists:
                 idx = self._scope_combo.count()
                 self._scope_combo.addItem(pl.name)
-                self._scope_combo.setItemData(idx, "playlist")
+                self._scope_types[idx] = "playlist"
 
         # Restore previous selection if still present, else fall back to All Tracks
         idx = self._scope_combo.findText(current_text)
@@ -191,7 +193,7 @@ class RenamePreview(QWidget):
     def _on_scope_changed(self) -> None:
         """Filter tracks and load pattern based on current scope selection."""
         text = self._scope_combo.currentText()
-        scope_type = self._scope_combo.currentData()
+        scope_type = self._scope_types.get(self._scope_combo.currentIndex())
 
         if not text or text == "All Tracks":
             self._active_tracks = list(self._tracks)
@@ -246,8 +248,12 @@ class RenamePreview(QWidget):
         if not pattern:
             self._status_label.setText("Enter a rename pattern first.")
             return
+        if not self._config or not self._config.source_directories:
+            self._status_label.setText("No source directory configured — set one in Settings.")
+            return
+        base_dir = self._config.source_directories[0]
         try:
-            plan = generate_rename_plan(self._active_tracks, pattern)
+            plan = generate_rename_plan(self._active_tracks, {"default": pattern}, base_dir)
             self.load_plan(plan)
             collisions = sum(1 for op in plan if op.status == "skipped")
             self._status_label.setText(
