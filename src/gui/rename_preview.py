@@ -97,6 +97,15 @@ class RenamePreview(QWidget):
         outer.setContentsMargins(8, 8, 8, 8)
         outer.setSpacing(6)
 
+        # Scope selector
+        scope_row = QHBoxLayout()
+        scope_row.addWidget(QLabel("Scope:"))
+        self._scope_combo = QComboBox()
+        self._scope_combo.addItem("All Tracks")
+        self._scope_combo.currentIndexChanged.connect(lambda _: self._on_scope_changed())
+        scope_row.addWidget(self._scope_combo, stretch=1)
+        outer.addLayout(scope_row)
+
         # Pattern editor
         pattern_group = QGroupBox("Rename Pattern")
         pattern_layout = QVBoxLayout(pattern_group)
@@ -150,12 +159,72 @@ class RenamePreview(QWidget):
     # Internal helpers
     # ------------------------------------------------------------------
 
+    def _populate_scope_combo(self) -> None:
+        """Rebuild the scope combo from current config and playlists."""
+        current_text = self._scope_combo.currentText()
+        self._scope_combo.blockSignals(True)
+        self._scope_combo.clear()
+        self._scope_combo.addItem("All Tracks")
+
+        if self._config:
+            buckets = [k for k in self._config.rename_patterns if k != "default"]
+            if buckets:
+                self._scope_combo.insertSeparator(self._scope_combo.count())
+                for name in buckets:
+                    self._scope_combo.addItem(name)
+
+        if self._playlists:
+            self._scope_combo.insertSeparator(self._scope_combo.count())
+            for pl in self._playlists:
+                self._scope_combo.addItem(pl.name)
+
+        # Restore previous selection if still present, else fall back to All Tracks
+        idx = self._scope_combo.findText(current_text)
+        self._scope_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self._scope_combo.blockSignals(False)
+        self._on_scope_changed()
+
+    def _on_scope_changed(self) -> None:
+        """Filter tracks and load pattern based on current scope selection."""
+        text = self._scope_combo.currentText()
+
+        if not text or text == "All Tracks":
+            self._active_tracks = list(self._tracks)
+            if self._config:
+                default_pat = self._config.rename_patterns.get("default", "")
+                if default_pat:
+                    self._pattern_input.setText(default_pat)
+        elif self._config and text in self._config.rename_patterns:
+            # Bucket selected
+            self._active_tracks = [t for t in self._tracks if t.bucket == text]
+            pattern = self._config.get_rename_pattern(text)
+            if pattern:
+                self._pattern_input.setText(pattern)
+        else:
+            # Playlist selected
+            playlist = next((p for p in self._playlists if p.name == text), None)
+            if playlist:
+                self._active_tracks = evaluate_playlist(playlist, self._tracks)
+            else:
+                self._active_tracks = list(self._tracks)
+            if self._config:
+                default_pat = self._config.rename_patterns.get("default", "")
+                if default_pat:
+                    self._pattern_input.setText(default_pat)
+
+        # Clear stale plan
+        self._plan = []
+        self._table.setRowCount(0)
+        self._execute_btn.setEnabled(False)
+
+        self._update_preview(self._pattern_input.text())
+
     def _update_preview(self, pattern: str) -> None:
-        if not self._tracks or not pattern:
+        if not self._active_tracks or not pattern:
             self._preview_label.setText("Live preview: (select tracks first)")
             self._preview_label.setStyleSheet("color: #888; font-family: monospace;")
             return
-        sample = self._tracks[0]
+        sample = self._active_tracks[0]
         try:
             rendered = render_pattern(pattern, sample)
             self._preview_label.setText(f"Preview: {rendered}")
@@ -165,15 +234,15 @@ class RenamePreview(QWidget):
             self._preview_label.setStyleSheet("color: #e74c3c; font-family: monospace;")
 
     def _run_dryrun(self) -> None:
-        if not self._tracks:
-            self._status_label.setText("No tracks loaded.")
+        if not self._active_tracks:
+            self._status_label.setText("No tracks in scope.")
             return
         pattern = self._pattern_input.text().strip()
         if not pattern:
             self._status_label.setText("Enter a rename pattern first.")
             return
         try:
-            plan = generate_rename_plan(self._tracks, pattern)
+            plan = generate_rename_plan(self._active_tracks, pattern)
             self.load_plan(plan)
             collisions = sum(1 for op in plan if op.status == "skipped")
             self._status_label.setText(
