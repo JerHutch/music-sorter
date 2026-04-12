@@ -39,7 +39,7 @@ A typical session looks like this:
    - Merge duplicates in **Organize → Duplicates**.
    - Import metadata from iTunes via **Import**.
    - Fetch missing artwork via the **Artwork** workflow.
-5. When tags are clean, use **Organize → Rename / Organize** to restructure files on disk according to your configured patterns.
+5. Set an **Organize Destination** in Settings (under the Organize section) — this is where renamed files will be moved. Then use **Organize → Rename / Organize** to restructure files on disk according to your configured patterns.
 6. Generate smart playlists via **Playlists**.
 
 Every operation that modifies files supports a **dry-run preview** before anything is written. All changes are logged to the operation history and can be undone.

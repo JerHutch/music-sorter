@@ -11,6 +11,16 @@ Music Sorter can rename files and restructure your folder hierarchy based on tag
 
 All moves are logged to history and can be undone.
 
+## Prerequisites
+
+Before running a rename, set an **Organize Destination** directory in Settings:
+
+1. Click **Settings** in the top navigation bar.
+2. Under **Organize**, click **Browse…** and select a folder where renamed files will be moved. This must be a directory separate from your source directories.
+3. Click anywhere else — the setting saves automatically.
+
+If no Organize Destination is configured, the dry-run preview is blocked with a reminder message.
+
 ## Pattern Syntax
 
 Patterns use `{token}` substitution. All token values are sanitized for filesystem safety (illegal characters are stripped or replaced).
