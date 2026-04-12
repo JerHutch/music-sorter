@@ -65,6 +65,30 @@ class SettingsView(QWidget):
 
         layout.addWidget(itunes_group)
 
+        # --- Organize ---
+        organize_group = QGroupBox("Organize")
+        organize_layout = QVBoxLayout(organize_group)
+
+        organize_row = QHBoxLayout()
+        organize_row.addWidget(QLabel("Destination:"))
+        self._organize_path = QLineEdit()
+        self._organize_path.setPlaceholderText("Folder where renamed files are moved…")
+        btn_browse_org = QPushButton("Browse…")
+        organize_row.addWidget(self._organize_path, stretch=1)
+        organize_row.addWidget(btn_browse_org)
+        organize_layout.addLayout(organize_row)
+
+        self._overlap_warning = QLabel("⚠ Destination overlaps a source directory.")
+        self._overlap_warning.setStyleSheet("color: #e67e22;")
+        self._overlap_warning.setVisible(False)
+        organize_layout.addWidget(self._overlap_warning)
+
+        btn_browse_org.clicked.connect(self._browse_organize_dir)
+        self._organize_path.textChanged.connect(self._check_overlap)
+        self._organize_path.textChanged.connect(lambda: self.settings_changed.emit())
+
+        layout.addWidget(organize_group)
+
         # --- AcoustID ---
         acoustid_group = QGroupBox("AcoustID")
         acoustid_layout = QHBoxLayout(acoustid_group)
@@ -103,16 +127,21 @@ class SettingsView(QWidget):
         if config.acoustid_api_key:
             self._acoustid_key.setText(str(config.acoustid_api_key))
 
+        if config.organize_directory:
+            self._organize_path.setText(str(config.organize_directory))
+
     # ------------------------------------------------------------------
     def _add_directory(self) -> None:
         path = QFileDialog.getExistingDirectory(self, "Select Music Directory")
         if path:
             self._dir_list.addItem(path)
+            self._check_overlap()
             self.settings_changed.emit()
 
     def _remove_directory(self) -> None:
         for item in self._dir_list.selectedItems():
             self._dir_list.takeItem(self._dir_list.row(item))
+        self._check_overlap()
         self.settings_changed.emit()
 
     def _browse_itunes(self) -> None:
@@ -140,3 +169,34 @@ class SettingsView(QWidget):
 
     def get_acoustid_api_key(self) -> str:
         return self._acoustid_key.text().strip()
+
+    def _browse_organize_dir(self) -> None:
+        path = QFileDialog.getExistingDirectory(self, "Select Organize Destination")
+        if path:
+            self._organize_path.setText(path)
+
+    def _check_overlap(self) -> None:
+        """Show warning if destination overlaps any source directory."""
+        dest_text = self._organize_path.text().strip()
+        if not dest_text:
+            self._overlap_warning.setVisible(False)
+            return
+        dest = Path(dest_text)
+        for src in self.get_source_directories():
+            try:
+                dest.relative_to(src)   # dest is under src (or equal)
+                self._overlap_warning.setVisible(True)
+                return
+            except ValueError:
+                pass
+            try:
+                src.relative_to(dest)   # src is under dest
+                self._overlap_warning.setVisible(True)
+                return
+            except ValueError:
+                pass
+        self._overlap_warning.setVisible(False)
+
+    def get_organize_directory(self) -> Path | None:
+        text = self._organize_path.text().strip()
+        return Path(text) if text else None
