@@ -1,6 +1,6 @@
 from pathlib import Path
 import pytest
-from src.core.models import Track, RenameOperation, SmartPlaylist, SimpleRule
+from src.core.models import Track, RenameOperation, SmartPlaylist
 from src.core.config import Config
 from src.gui.rename_preview import RenamePreview
 
