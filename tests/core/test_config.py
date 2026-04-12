@@ -64,3 +64,26 @@ def test_logging_config_defaults():
     assert log_cfg["console_level"] == "WARNING"
     assert "app.log" in log_cfg["file"]
     assert log_cfg["max_days"] == 7
+
+
+def test_organize_directory_defaults_to_none():
+    config = Config({"rename_patterns": {"default": "{title}.mp3"}})
+    assert config.organize_directory is None
+
+
+def test_organize_directory_round_trips(tmp_path):
+    config = Config({})
+    config.organize_directory = Path("/music/organized")
+    out = tmp_path / "config.yaml"
+    config.save(out)
+    reloaded = Config.load(out)
+    assert reloaded.organize_directory == Path("/music/organized")
+
+
+def test_organize_directory_none_clears_value(tmp_path):
+    config = Config({"organize_directory": "/music/organized"})
+    config.organize_directory = None
+    out = tmp_path / "config.yaml"
+    config.save(out)
+    reloaded = Config.load(out)
+    assert reloaded.organize_directory is None

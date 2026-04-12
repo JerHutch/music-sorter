@@ -133,6 +133,15 @@ class Config:
         return self._data.get("analysis", {})
 
     @property
+    def organize_directory(self) -> Path | None:
+        val = self._data.get("organize_directory")
+        return Path(val) if val else None
+
+    @organize_directory.setter
+    def organize_directory(self, path: Path | None) -> None:
+        self._data["organize_directory"] = str(path) if path else None
+
+    @property
     def normalization(self) -> dict:
         return self._data.get("normalization", {})
 
