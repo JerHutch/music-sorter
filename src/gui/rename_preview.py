@@ -248,10 +248,10 @@ class RenamePreview(QWidget):
         if not pattern:
             self._status_label.setText("Enter a rename pattern first.")
             return
-        if not self._config or not self._config.source_directories:
-            self._status_label.setText("No source directory configured — set one in Settings.")
+        base_dir = self._config.organize_directory if self._config else None
+        if not base_dir:
+            self._status_label.setText("Set an Organize Destination in Settings first.")
             return
-        base_dir = self._config.source_directories[0]
         try:
             plan = generate_rename_plan(self._active_tracks, {"default": pattern}, base_dir)
             self.load_plan(plan)

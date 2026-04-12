@@ -123,3 +123,17 @@ def test_scope_playlist_filters_tracks(qtbot):
     view.set_playlists([playlist])
     view.select_scope("My DJ Playlist")
     assert view.active_track_count() == 2
+
+
+def test_dryrun_blocked_when_no_organize_directory(qtbot):
+    """Dry-run shows a message and does not proceed when organize_directory is unset."""
+    from src.core.config import Config
+    view = RenamePreview()
+    qtbot.addWidget(view)
+    config = Config({"rename_patterns": {"default": "{title}.mp3"}})
+    # organize_directory is not set — config.organize_directory is None
+    view.set_tracks([_track()])
+    view.set_config(config)
+    view._run_dryrun()
+    assert view._status_label.text() == "Set an Organize Destination in Settings first."
+    assert view.operation_count() == 0

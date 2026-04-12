@@ -342,6 +342,7 @@ class MainWindow(QMainWindow):
         self._config.source_directories = self._settings_view.get_source_directories()
         self._config.itunes_xml_path = self._settings_view.get_itunes_path()
         self._config.acoustid_api_key = self._settings_view.get_acoustid_api_key()
+        self._config.organize_directory = self._settings_view.get_organize_directory()
         self._config.save(self._config_path)
 
     # ------------------------------------------------------------------
