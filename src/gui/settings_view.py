@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QLabel,
 )
-from PySide6.QtCore import Signal
 
 from src.core.config import Config
 
@@ -127,8 +126,7 @@ class SettingsView(QWidget):
         if config.acoustid_api_key:
             self._acoustid_key.setText(str(config.acoustid_api_key))
 
-        if config.organize_directory:
-            self._organize_path.setText(str(config.organize_directory))
+        self._organize_path.setText(str(config.organize_directory) if config.organize_directory else "")
 
     # ------------------------------------------------------------------
     def _add_directory(self) -> None:

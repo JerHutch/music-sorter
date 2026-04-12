@@ -55,3 +55,14 @@ def test_overlap_warning_shown_when_dest_equals_source(qtbot):
     view._dir_list.addItem("/music/source")
     view._organize_path.setText("/music/source")
     assert not view._overlap_warning.isHidden()
+
+
+def test_load_config_clears_organize_directory_when_none(qtbot):
+    view = SettingsView()
+    qtbot.addWidget(view)
+    # First load sets a path
+    view.load_config(Config({"organize_directory": "/music/organized"}))
+    assert view.get_organize_directory() == Path("/music/organized")
+    # Second load with no organize_directory clears it
+    view.load_config(Config({}))
+    assert view.get_organize_directory() is None
