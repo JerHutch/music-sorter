@@ -6,12 +6,14 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QProgressBar,
     QTableWidget, QTableWidgetItem, QLineEdit,
-    QGroupBox, QHeaderView,
+    QGroupBox, QHeaderView, QComboBox,
 )
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 
-from src.core.models import RenameOperation, Track
+from src.core.config import Config
+from src.core.models import RenameOperation, SmartPlaylist, Track
+from src.core.playlist import evaluate_playlist
 from src.core.renamer import render_pattern, generate_rename_plan
 from src.gui.workers import RenameWorker
 
@@ -33,9 +35,12 @@ class RenamePreview(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._tracks: list[Track] = []
+        self._active_tracks: list[Track] = []
         self._plan: list[RenameOperation] = []
         self._worker: RenameWorker | None = None
         self._patterns: dict[str, str] = {}
+        self._config: Config | None = None
+        self._playlists: list[SmartPlaylist] = []
         self._build_ui()
 
     # ------------------------------------------------------------------
@@ -44,13 +49,21 @@ class RenamePreview(QWidget):
 
     def set_tracks(self, tracks: list[Track]) -> None:
         self._tracks = tracks
-        self._update_preview(self._pattern_input.text())
+        self._on_scope_changed()
 
     def set_patterns(self, patterns: dict[str, str]) -> None:
         self._patterns = patterns
         default = patterns.get("default", "")
         if default:
             self._pattern_input.setText(default)
+
+    def set_config(self, config: Config) -> None:
+        self._config = config
+        self._populate_scope_combo()
+
+    def set_playlists(self, playlists: list[SmartPlaylist]) -> None:
+        self._playlists = playlists
+        self._populate_scope_combo()
 
     def load_plan(self, plan: list[RenameOperation]) -> None:
         self._plan = plan
@@ -62,6 +75,18 @@ class RenamePreview(QWidget):
 
     def is_execute_enabled(self) -> bool:
         return self._execute_btn.isEnabled()
+
+    def active_track_count(self) -> int:
+        return len(self._active_tracks)
+
+    def select_scope(self, name: str) -> None:
+        """Programmatically select a scope entry by name (used by tests)."""
+        idx = self._scope_combo.findText(name)
+        if idx >= 0:
+            self._scope_combo.setCurrentIndex(idx)
+
+    def current_pattern(self) -> str:
+        return self._pattern_input.text()
 
     # ------------------------------------------------------------------
     # UI construction
