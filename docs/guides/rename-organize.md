@@ -57,10 +57,14 @@ rename_patterns:
 ## Using the Rename Preview
 
 1. Click **Organize** in the top navigation bar, then select the **Rename / Organize** tab.
-2. The pattern editor at the top shows the current rename pattern. Edit it and the live preview beneath it updates immediately, showing sample output from a few tracks.
-3. Click **Generate Preview** to build the full dry-run table: every old path → new path for all tracks. Scroll through and look for anything unexpected.
-4. **Collision warnings** (two tracks mapping to the same destination) are highlighted. Music Sorter automatically appends a suffix like `(2)` to resolve collisions, but you should review them.
-5. Click **Execute** to run the moves. Progress is shown in the status bar.
+2. Use the **Scope** dropdown to choose which tracks to act on:
+   - **All Tracks** — the entire library (default)
+   - A **bucket name** — only tracks tagged with that bucket; the pattern input auto-loads the bucket's configured rename pattern
+   - A **playlist name** — only tracks matching that smart playlist's rules; the default pattern is loaded
+3. The pattern editor shows the current rename pattern. Edit it and the live preview beneath it updates immediately, showing sample output from the first track in scope.
+4. Click **Generate Dry-Run Preview** to build the full table: every old path → new path for tracks in scope. Scroll through and look for anything unexpected.
+5. **Collision warnings** (two tracks mapping to the same destination) are highlighted. Music Sorter automatically appends a suffix like `(2)` to resolve collisions, but you should review them.
+6. Click **Execute Rename** to run the moves. Progress is shown in the status bar.
 
 ## Safety Rules
 
