@@ -244,6 +244,10 @@ class AutoTagWorker(QThread):
         self._tracks = tracks
         self._db = db
         self._api_key = api_key
+        self._cancelled = False
+
+    def cancel(self) -> None:
+        self._cancelled = True
 
     def run(self) -> None:
         total = len(self._tracks)
@@ -251,6 +255,8 @@ class AutoTagWorker(QThread):
         unmatched = 0
         try:
             for i, track in enumerate(self._tracks, 1):
+                if self._cancelled:
+                    break
                 try:
                     fp_result = generate_fingerprint(track.file_path)
                     if fp_result is None:

@@ -41,3 +41,29 @@ def test_analyze_worker_cancel(mock_bpm, mock_key, mock_write, mock_upsert, tmp_
 
     # Should have processed fewer than all 5 tracks
     assert call_count < 5
+
+
+@patch("src.gui.workers.lookup_metadata", return_value=None)
+@patch("src.gui.workers.generate_fingerprint", return_value=("fake-fp", 240.0))
+def test_autotag_worker_cancel(mock_fp, mock_lookup, tmp_path):
+    from src.core.database import Database
+    from src.gui.workers import AutoTagWorker
+
+    db = Database(tmp_path / "test.db")
+    tracks = [_make_track(i) for i in range(5)]
+    for track in tracks:
+        db.upsert_track(track, file_mtime=1000.0)
+
+    progress_calls = []
+    worker = AutoTagWorker(tracks, db, api_key="test-key")
+
+    def on_progress(completed, total):
+        progress_calls.append(completed)
+        if completed == 1:
+            worker.cancel()
+
+    worker.progress.connect(on_progress)
+    worker.run()
+
+    assert len(progress_calls) < 5
+    assert mock_fp.call_count < 5
