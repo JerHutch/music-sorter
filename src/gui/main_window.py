@@ -153,7 +153,7 @@ class MainWindow(QMainWindow):
         status_bar.addWidget(self._status_label, 1)
         self._cancel_btn = QPushButton("Cancel")
         self._cancel_btn.setVisible(False)
-        self._cancel_btn.clicked.connect(self._cancel_scan)
+        self._cancel_btn.clicked.connect(self._cancel_current_operation)
         status_bar.addPermanentWidget(self._cancel_btn)
         self._progress_bar = QProgressBar()
         self._progress_bar.setRange(0, 0)
@@ -374,10 +374,28 @@ class MainWindow(QMainWindow):
             self._cancel_btn.setEnabled(False)
             self._status_label.setText("Cancelling scan…")
 
+    def _cancel_current_operation(self) -> None:
+        for worker in (self._scan_worker, self._analyze_worker,
+                       self._autotag_worker, self._artwork_worker):
+            if worker and worker.isRunning():
+                worker.cancel()
+        self._cancel_btn.setEnabled(False)
+        self._status_label.setText("Cancelling…")
+
+    def _maybe_hide_cancel(self) -> None:
+        """Hide and re-enable the cancel button when no batch workers are running."""
+        running = any(
+            w and w.isRunning()
+            for w in (self._scan_worker, self._analyze_worker,
+                      self._autotag_worker, self._artwork_worker)
+        )
+        if not running:
+            self._cancel_btn.setVisible(False)
+            self._cancel_btn.setEnabled(True)
+
     def _on_scan_finished(self, total: int) -> None:
         self._progress_bar.setVisible(False)
-        self._cancel_btn.setVisible(False)
-        self._cancel_btn.setEnabled(True)
+        self._maybe_hide_cancel()
         self._status_label.setText(f"Scan complete — {total} files processed")
         self._refresh_library()
 
@@ -495,6 +513,8 @@ class MainWindow(QMainWindow):
         self._progress_bar.setRange(0, len(tracks))
         self._progress_bar.setValue(0)
         self._progress_bar.setVisible(True)
+        self._cancel_btn.setVisible(True)
+        self._cancel_btn.setEnabled(True)
         self._autotag_worker.start()
 
     def _on_autotag_progress(self, completed: int, total: int) -> None:
@@ -503,6 +523,7 @@ class MainWindow(QMainWindow):
 
     def _on_autotag_finished(self, conflicts: list, unmatched: int) -> None:
         self._progress_bar.setVisible(False)
+        self._maybe_hide_cancel()
         msg = "Metadata lookup complete"
         if unmatched:
             msg += f" — {unmatched} track(s) had no match"
@@ -604,6 +625,8 @@ class MainWindow(QMainWindow):
         self._progress_bar.setRange(0, len(tracks))
         self._progress_bar.setValue(0)
         self._progress_bar.setVisible(True)
+        self._cancel_btn.setVisible(True)
+        self._cancel_btn.setEnabled(True)
         self._analyze_worker.start()
 
     def _on_analyze_progress(self, completed: int, total: int) -> None:
@@ -612,6 +635,7 @@ class MainWindow(QMainWindow):
 
     def _on_analyze_finished(self, updated: list) -> None:
         self._progress_bar.setVisible(False)
+        self._maybe_hide_cancel()
         self._status_label.setText(f"Analysis complete — {len(updated)} track(s) updated")
         self._refresh_library()
 
@@ -665,8 +689,11 @@ class MainWindow(QMainWindow):
             self._progress_bar.setRange(0, len(tracks))
             self._progress_bar.setValue(0)
             self._progress_bar.setVisible(True)
+            self._cancel_btn.setVisible(True)
+            self._cancel_btn.setEnabled(True)
             self._artwork_worker.progress.connect(self._on_artwork_progress)
             self._artwork_worker.done.connect(lambda: self._progress_bar.setVisible(False))
+            self._artwork_worker.done.connect(self._maybe_hide_cancel)
         self._artwork_worker.start()
 
     def _on_artwork_scan_track_done(self, track: object, success: bool, image_data: bytes) -> None:
