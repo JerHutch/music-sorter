@@ -66,6 +66,9 @@ if not base_dir:
 
 `load_config` on startup already calls `self._settings_view.load_config(self._config)` — no change needed there.
 
+## Section 4: Documentation
+Update the rename-organize and getting-started guides. 
+
 ## Out of Scope
 
 - Per-bucket destination directories
