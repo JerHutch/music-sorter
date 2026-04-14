@@ -230,8 +230,8 @@ def test_batch_artwork_scan_hides_progress_bar_on_done(qtbot):
 
     assert win._progress_bar.isVisible()
 
-    # Simulate ArtworkWorker.done firing — hide lambda is the first of two done.connect calls
-    hide_fn = mock_instance.done.connect.call_args_list[-2][0][0]
+    # Simulate ArtworkWorker.done firing — the progress bar hide lambda is the second done.connect call
+    hide_fn = mock_instance.done.connect.call_args_list[1][0][0]
     hide_fn()
 
     assert not win._progress_bar.isVisible()

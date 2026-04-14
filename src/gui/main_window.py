@@ -368,12 +368,6 @@ class MainWindow(QMainWindow):
     def _on_scan_progress(self, count: int, current_path: str) -> None:
         self._status_label.setText(f"Scanning… {count} files found — {current_path}")
 
-    def _cancel_scan(self) -> None:
-        if self._scan_worker and self._scan_worker.isRunning():
-            self._scan_worker.cancel()
-            self._cancel_btn.setEnabled(False)
-            self._status_label.setText("Cancelling scan…")
-
     def _cancel_current_operation(self) -> None:
         for worker in (self._scan_worker, self._analyze_worker,
                        self._autotag_worker, self._artwork_worker):
