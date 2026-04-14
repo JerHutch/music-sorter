@@ -67,3 +67,27 @@ def test_autotag_worker_cancel(mock_fp, mock_lookup, tmp_path):
 
     assert len(progress_calls) < 5
     assert mock_fp.call_count < 5
+
+
+@patch("src.gui.workers.find_local_artwork", return_value=None)
+@patch("src.gui.workers._artwork_mod")
+def test_artwork_worker_cancel(mock_artwork_mod, mock_find, tmp_path):
+    from src.gui.workers import ArtworkWorker
+
+    mock_artwork_mod.musicbrainzngs = None  # skip MusicBrainz path
+
+    tracks = [_make_track(i) for i in range(5)]
+
+    progress_calls = []
+    worker = ArtworkWorker(tracks)
+
+    def on_progress(completed, total):
+        progress_calls.append(completed)
+        if completed == 1:
+            worker.cancel()
+
+    worker.progress.connect(on_progress)
+    worker.run()
+
+    assert len(progress_calls) < 5
+    assert mock_find.call_count < 5

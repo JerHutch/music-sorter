@@ -324,10 +324,16 @@ class ArtworkWorker(QThread):
     def __init__(self, tracks: list[Track]):
         super().__init__()
         self._tracks = tracks
+        self._cancelled = False
+
+    def cancel(self) -> None:
+        self._cancelled = True
 
     def run(self) -> None:
         total = len(self._tracks)
         for i, track in enumerate(self._tracks, 1):
+            if self._cancelled:
+                break
             try:
                 data = find_local_artwork(track.file_path)
                 if data:
