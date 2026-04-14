@@ -191,11 +191,17 @@ class AnalyzeWorker(QThread):
         super().__init__()
         self._tracks = tracks
         self._db = db
+        self._cancelled = False
+
+    def cancel(self) -> None:
+        self._cancelled = True
 
     def run(self):
         total = len(self._tracks)
         updated: list[Track] = []
         for i, track in enumerate(self._tracks, 1):
+            if self._cancelled:
+                break
             try:
                 bpm = detect_bpm(track.file_path)
                 key = detect_key(track.file_path)
@@ -246,15 +252,17 @@ class AutoTagWorker(QThread):
         try:
             for i, track in enumerate(self._tracks, 1):
                 try:
-                    fp = generate_fingerprint(track.file_path)
-                    if fp is None:
+                    fp_result = generate_fingerprint(track.file_path)
+                    if fp_result is None:
                         unmatched += 1
                         track.acoustid_no_match = True
                         self._upsert(track)
                         self.progress.emit(i, total)
                         continue
 
-                    meta = lookup_metadata(fp, track.duration, api_key=self._api_key)
+                    fp, fp_duration = fp_result
+                    track.fingerprint = fp
+                    meta = lookup_metadata(fp, fp_duration, api_key=self._api_key)
                     if meta is None:
                         unmatched += 1
                         track.acoustid_no_match = True
