@@ -44,7 +44,7 @@ def test_no_fingerprint_marks_unmatched(mock_fp, tmp_path):
 
 
 @patch("src.gui.workers.lookup_metadata", return_value=None)
-@patch("src.gui.workers.generate_fingerprint", return_value="fake-fp")
+@patch("src.gui.workers.generate_fingerprint", return_value=("fake-fp", 240.0))
 def test_no_acoustid_match_marks_unmatched(mock_fp, mock_lookup, tmp_path):
     from src.core.database import Database
     db = Database(tmp_path / "test.db")
@@ -60,7 +60,7 @@ def test_no_acoustid_match_marks_unmatched(mock_fp, mock_lookup, tmp_path):
 
 
 @patch("src.gui.workers.lookup_metadata")
-@patch("src.gui.workers.generate_fingerprint", return_value="fake-fp")
+@patch("src.gui.workers.generate_fingerprint", return_value=("fake-fp", 240.0))
 def test_matching_values_produce_no_conflict(mock_fp, mock_lookup, tmp_path):
     from src.core.database import Database
     mock_lookup.return_value = {
@@ -78,7 +78,7 @@ def test_matching_values_produce_no_conflict(mock_fp, mock_lookup, tmp_path):
 
 
 @patch("src.gui.workers.lookup_metadata")
-@patch("src.gui.workers.generate_fingerprint", return_value="fake-fp")
+@patch("src.gui.workers.generate_fingerprint", return_value=("fake-fp", 240.0))
 def test_empty_field_produces_conflict(mock_fp, mock_lookup, tmp_path):
     from src.core.database import Database
     mock_lookup.return_value = {
@@ -103,7 +103,7 @@ def test_empty_field_produces_conflict(mock_fp, mock_lookup, tmp_path):
 
 
 @patch("src.gui.workers.lookup_metadata")
-@patch("src.gui.workers.generate_fingerprint", return_value="fake-fp")
+@patch("src.gui.workers.generate_fingerprint", return_value=("fake-fp", 240.0))
 def test_differing_existing_value_produces_conflict(mock_fp, mock_lookup, tmp_path):
     from src.core.database import Database
     mock_lookup.return_value = {

@@ -20,20 +20,37 @@ except ImportError:
 _API_KEY = ""  # configured via settings (acoustid_api_key in config)
 
 
-def generate_fingerprint(path: Path) -> str | None:
-    """Generate a Chromaprint audio fingerprint. Returns fingerprint string or None."""
+def generate_fingerprint(path: Path) -> tuple[str, float] | None:
+    """Generate a Chromaprint audio fingerprint.
+
+    Returns (compressed_fingerprint, duration_seconds) or None on failure.
+    The compressed fingerprint is base64-encoded and suitable for AcoustID lookup.
+    """
     logger.debug("Generating fingerprint: %s", path)
     try:
         result = subprocess.run(
-            ["fpcalc", "-raw", str(path)],
+            ["fpcalc", str(path)],
             capture_output=True, text=True, timeout=30,
         )
         if result.returncode != 0:
-            logger.warning("fpcalc returned non-zero exit code for: %s", path)
+            logger.warning(
+                "fpcalc returned non-zero exit code for %s: %s",
+                path, result.stderr.strip(),
+            )
             return None
+        fingerprint: str | None = None
+        duration: float | None = None
         for line in result.stdout.strip().split("\n"):
             if line.startswith("FINGERPRINT="):
-                return line.split("=", 1)[1]
+                fingerprint = line.split("=", 1)[1]
+            elif line.startswith("DURATION="):
+                try:
+                    duration = float(line.split("=", 1)[1])
+                except ValueError:
+                    pass
+        if fingerprint and duration is not None:
+            return fingerprint, duration
+        logger.warning("fpcalc output missing FINGERPRINT or DURATION for: %s", path)
         return None
     except subprocess.TimeoutExpired:
         logger.error("fpcalc timed out for: %s", path)
@@ -101,7 +118,7 @@ def lookup_metadata(fingerprint: str, duration: float, api_key: str = _API_KEY) 
     if not api_key:
         return None
     try:
-        results = acoustid.lookup(api_key, fingerprint, int(duration))
+        results = acoustid.lookup(api_key, fingerprint, int(duration), meta="recordings releasegroups")
         for score, recording_id, title, artist in results:
             mb_details = _fetch_musicbrainz_details(recording_id)
             return {
@@ -114,20 +131,55 @@ def lookup_metadata(fingerprint: str, duration: float, api_key: str = _API_KEY) 
                 "track_number": mb_details.get("track_number"),
                 "year": mb_details.get("year"),
             }
-    except Exception:
-        logger.warning("AcoustID lookup failed for fingerprint")
+    except acoustid.WebServiceError as exc:
+        logger.warning(
+            "AcoustID web service error (status=%s): %s",
+            getattr(exc, "code", "?"),
+            exc,
+        )
+        return None
+    except Exception as exc:
+        logger.warning("AcoustID lookup failed: %s: %s", type(exc).__name__, exc)
         return None
     return None
+
+
+def _decode_fingerprint_ints(fp: str) -> list[int] | None:
+    """Decode a fingerprint string to a list of 32-bit integers.
+
+    Accepts both compressed (base64 Chromaprint) and legacy raw (comma-separated int) formats.
+    Returns None if decoding fails.
+    """
+    # Try compressed base64 format first (current format from fpcalc without -raw)
+    if acoustid is not None:
+        try:
+            import chromaprint  # bundled with pyacoustid
+            return list(chromaprint.decode_fingerprint(fp))
+        except Exception:
+            pass
+        try:
+            # Older pyacoustid exposes decode via acoustid.chromaprint
+            import acoustid.chromaprint as _cp
+            return list(_cp.decode_fingerprint(fp))
+        except Exception:
+            pass
+    # Fallback: legacy raw comma-separated integers
+    try:
+        return [int(x) for x in fp.split(",")]
+    except ValueError:
+        return None
 
 
 def compute_similarity(fp1: str, fp2: str) -> float:
     """Compute similarity between two fingerprints (0.0 to 1.0)."""
     if fp1 == fp2:
         return 1.0
-    try:
-        ints1 = [int(x) for x in fp1.split(",")]
-        ints2 = [int(x) for x in fp2.split(",")]
-    except ValueError:
+
+    ints1 = _decode_fingerprint_ints(fp1)
+    ints2 = _decode_fingerprint_ints(fp2)
+
+    if ints1 is None or ints2 is None:
+        # Last-resort character-level comparison
         common = sum(a == b for a, b in zip(fp1, fp2))
         max_len = max(len(fp1), len(fp2))
         return common / max_len if max_len > 0 else 0.0

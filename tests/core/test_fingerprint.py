@@ -8,12 +8,15 @@ from src.core.fingerprint import generate_fingerprint, lookup_metadata, compute_
 
 def test_generate_fingerprint(tagged_full_mp3):
     """Test fingerprint generation on a real MP3 file."""
-    fp = generate_fingerprint(tagged_full_mp3)
+    result = generate_fingerprint(tagged_full_mp3)
     # May return None if fpcalc is not installed — that's OK for CI
-    # If fpcalc IS installed, it should return a non-empty string
-    if fp is not None:
+    # If fpcalc IS installed, it should return (fingerprint_str, duration_float)
+    if result is not None:
+        fp, duration = result
         assert isinstance(fp, str)
         assert len(fp) > 0
+        assert isinstance(duration, float)
+        assert duration > 0
 
 
 def test_generate_fingerprint_returns_none_for_invalid(tmp_path):
